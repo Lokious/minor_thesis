@@ -18,6 +18,7 @@ def read_rdata_to_csv():
         '../../elope-main/ELOPE_raw_data/data_field/field_pheno_filtered.RData')
     print(data_field['field_lines'])
     DH_field_data = data_field['field_lines']
+    print(DH_field_data.columns)
     hybrids_field_data = data_field['field_hybrids']
     # ## drop NA
     # DH_field_data = DH_field_data.dropna()
@@ -36,6 +37,7 @@ def read_rdata_to_csv():
         "../../elope-main/ELOPE_raw_data/data_platform/platform_image_filtered.RData")
 
     DH_platform_data = data_platform['image_lines']
+    print(DH_platform_data.columns)
     hybrids_platform_data = data_platform['image_hybrids']
     # # drop NA
     # DH_platform_data = DH_platform_data.dropna()
@@ -96,10 +98,17 @@ def calculate_average_traits_value_by_day(trait_df:pd.DataFrame)->pd.DataFrame:
     # only keep useful columns
     trait_df = trait_df[
         ["plantid","LA_Estimated", "Height_Estimated", "Biomass_Estimated",
-         "genotype_name", "DAS","Line","Position","XY","datetime","Day"]]
-    groups_item = trait_df.groupby(["plantid","Day"])["LA_Estimated", "Height_Estimated", "Biomass_Estimated"].mean()
-    print(groups_item.reset_index(inplace=True))
-
+         "genotype_name", "DAS","Line","Position","XY","datetime","Day","Rep"]]
+    non_numical_column=trait_df[["plantid","Day","genotype_name", "DAS","Line","Position","XY","Rep"]]
+    print(non_numical_column)
+    non_numical_column = non_numical_column.drop_duplicates()
+    print(non_numical_column)
+    # very plant should be measured once per day, for those measured multiple times, calculate mean
+    after_average = trait_df.groupby(["plantid","Day"])["LA_Estimated", "Height_Estimated", "Biomass_Estimated"].mean().reset_index()
+    print(after_average)
+    useful_column=after_average.merge(non_numical_column,on=["plantid","Day"])
+    print(useful_column)
+    useful_column.to_csv("../data/image_DHline_data_after_average_based_on_day.csv")
 def get_colors(num_colors):
     import colorsys
     colors = []
@@ -194,20 +203,14 @@ def main():
     #data_geno_genotype=dill.load(open("../data/data_geno_genotype","rb"))
     data_DH_platform = dill.load(open("../data/image_DHline_data", "rb"))
     #print(data_geno_genotype)
-    print(data_DH_platform)
-
+    #print(data_DH_platform)
+    #read_rdata_to_csv()
     calculate_average_traits_value_by_day(data_DH_platform)
 
     #remove_no_effect_SNPs(data_DH_platform,data_geno_genotype)
-    gene_after_remove=dill.load(open("../data/remove_no_effect_snps","rb"))
-    # genotype_name=gene_after_remove["genotype_name"]
-    # gene_after_remove = gene_after_remove.drop(columns=["genotype_name"])
-    # gene_after_remove = gene_after_remove.astype('bytes')
-    # gene_after_remove["genotype_name"] = genotype_name
-    # with open ("../data/remove_no_effect_snps","wb") as dillfile:
-    #     dill.dump(gene_after_remove,dillfile)
-    # print(gene_after_remove)
-    merge_traits_SNPs(data_DH_platform,gene_after_remove)
+    #gene_after_remove=dill.load(open("../data/remove_no_effect_snps","rb"))
+
+    #merge_traits_SNPs(data_DH_platform,gene_after_remove)
 
     '''
     #read field data
