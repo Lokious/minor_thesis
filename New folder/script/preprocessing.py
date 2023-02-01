@@ -13,6 +13,8 @@ from scipy import stats
 import seaborn as sns
 
 def read_rdata_to_csv():
+
+
     # read field data
     data_field = pyreadr.read_r(
         '../../elope-main/ELOPE_raw_data/data_field/field_pheno_filtered.RData')
@@ -32,7 +34,7 @@ def read_rdata_to_csv():
     # DH_field_data.to_csv("../data/field_DHline_data.csv")
     # hybrids_field_data.to_csv("../data/field_hybrids_data.csv")
 
-    # read platform data
+    # read platform image data
     data_platform = pyreadr.read_r(
         "../../elope-main/ELOPE_raw_data/data_platform/platform_image_filtered.RData")
 
@@ -50,6 +52,19 @@ def read_rdata_to_csv():
         dill.dump(DH_platform_data, dill_file)
     with open("../data/image_hybrids_data", "wb") as dill_file:
         dill.dump(hybrids_platform_data, dill_file)
+
+    data_manual_platform = pyreadr.read_r("../../elope-main/ELOPE_raw_data/data_platform/platform_pheno_filtered.RData")
+    data_manual_platform_DH = data_manual_platform["pheno_lines"]
+    data_manual_platform_hybrids = data_manual_platform["pheno_hybrids"]
+    print(data_manual_platform_DH)
+    ## save as csv file (for looking in excel) and save object (for using in code)
+    data_manual_platform_DH.to_csv("../data/data_manual_platform_DH.csv")
+    data_manual_platform_hybrids.to_csv("../data/data_manual_platform_hybridscsv")
+    with open("../data/data_manual_platform_DH", "wb") as dill_file:
+        dill.dump(data_manual_platform_DH, dill_file)
+    with open("../data/data_manual_platform_hybrids", "wb") as dill_file:
+        dill.dump(data_manual_platform_hybrids, dill_file)
+
     # read genotype file
     data_geno = pyreadr.read_r(
         "../../elope-main/ELOPE_raw_data/data_genotypic/geno_filtered.RData")
@@ -86,6 +101,7 @@ def check_genotype(dataframe:pd.DataFrame,check_geno="CH"):
 
 
 def remove_check_genotype(dataframe:pd.DataFrame,check_geno:list):
+
     print(dataframe)
     length1= len(dataframe.index)
     dataframe.drop(dataframe[dataframe.genotype_name.isin(check_geno)].index, inplace=True)
@@ -109,6 +125,9 @@ def calculate_average_traits_value_by_day(trait_df:pd.DataFrame)->pd.DataFrame:
     useful_column=after_average.merge(non_numical_column,on=["plantid","Day"])
     print(useful_column)
     useful_column.to_csv("../data/image_DHline_data_after_average_based_on_day.csv")
+
+    return useful_column
+
 def get_colors(num_colors):
     import colorsys
     colors = []
@@ -172,10 +191,13 @@ def plot_raw_data(DH_platform_data):
     group_number=len(groups_object.groups)
     color_list=get_colors(group_number)
     for item in groups_object.groups:
+        #group based on plant, every plant related to one line
+
         #print(item)
         plant = groups_object.get_group(item)
+        print(plant[['DAS',"Pot"]])
         # drop duplicate day( ned to to change to average ..)
-        plant = plant.drop_duplicates(subset=['DAS'])
+        # plant = plant.drop_duplicates(subset=['DAS'])
         #print(plant)
         for day in plant.index:
             plant_id = plant.loc[day, 'plantid']
@@ -186,7 +208,7 @@ def plot_raw_data(DH_platform_data):
             #it has 4 different harvest day
             # print(plant['DAS'])
             # print(plant['LA_Estimated'])
-            plt.plot(plant["DAS"],plant['Biomass_Estimated'],label=plant.loc[day, 'plantid'],linewidth=0.2)
+            plt.plot(plant["DAS"],plant['visi'],label=plant.loc[day, 'plantid'],linewidth=0.2)
             plt.axvline(x = plant.loc[list(plant["DAS"].index)[-1],"DAS"], linestyle = '-',linewidth=1)
 
             #plt.legend()
@@ -194,18 +216,27 @@ def plot_raw_data(DH_platform_data):
         #     break
     plt.ylabel("Biomass_Estimated")
     plt.xlabel("Days")
-    plt.savefig("Biomass_Estimated.png")
+    #plt.savefig("Biomass_Estimated.png")
     plt.show()
 
 def main():
     #read_rdata_to_csv()
+    #data_manual_platform_DH = dill.load(open("../data/data_manual_platform_DH", "rb"))
+    #plot_raw_data(data_manual_platform_DH)
     # load genotype data and platform phenotype data (DH)
-    #data_geno_genotype=dill.load(open("../data/data_geno_genotype","rb"))
+    data_geno_genotype=dill.load(open("../data/data_geno_genotype","rb"))
     data_DH_platform = dill.load(open("../data/image_DHline_data", "rb"))
+    field_DH_data =dill.load(open("../data/field_DHline_data",'rb'))
+    gene_field = set(field_DH_data["InbredCode"].unique())
+    gene_platform = set(data_DH_platform["genotype_name"].unique())
+    print(len(gene_field.intersection(gene_platform)))
+    print(len(field_DH_data["InbredCode"].unique()))
+    print(len(data_DH_platform["genotype_name"].unique()))
+    print(len(data_geno_genotype.index))
     #print(data_geno_genotype)
     #print(data_DH_platform)
     #read_rdata_to_csv()
-    calculate_average_traits_value_by_day(data_DH_platform)
+    #calculate_average_traits_value_by_day(data_DH_platform)
 
     #remove_no_effect_SNPs(data_DH_platform,data_geno_genotype)
     #gene_after_remove=dill.load(open("../data/remove_no_effect_snps","rb"))
