@@ -142,7 +142,8 @@ def get_colors(num_colors):
 def remove_no_effect_SNPs(geno_df:pd.DataFrame)->int:
 
     """
-    This function is used to merge SNPs(need to select before merge, there are around 500,000 SNPs and phenotype data
+    remove thoses SNPs which is the same among all 955 genotypes
+
     :param trait_df:
     :param geno_df:
     :return:
@@ -170,6 +171,25 @@ def remove_no_effect_SNPs(geno_df:pd.DataFrame)->int:
         dill.dump(geno_df,dillfile)
 
     return 0
+
+def calculate_SNPs_relationship(snps_df:pd.DataFrame)->pd.DataFrame:
+
+    # if correlation between snps equals to one or minors one, keep one of those
+    corr_snp_df = pd.DataFrame(columns=snps_df.columns,index=snps_df.columns)
+    snps = list(snps_df.columns)
+    while snps!=[]:
+        snp1=snps.pop()
+        for snp2 in snps:
+            correlation = snps_df[snp1].corr(snps_df[snp2])
+            print(correlation)
+            corr_snp_df[snp1,snp2] = correlation
+
+    #save correlation df
+    corr_snp_df.to_csv("../data/correlation_snps_df.csv")
+    # find where corr = 1 or -1
+    where_snps = corr_snp_df.where(corr_snp_df==(1 or -1))
+    print(where_snps)
+    return corr_snp_df
 
 def merge_traits_SNPs(trait_df:pd.DataFrame,geno_df:pd.DataFrame)->pd.DataFrame:
     trait_df=trait_df[["LA_Estimated","Height_Estimated","Biomass_Estimated","genotype_name","DAS"]]
@@ -224,15 +244,16 @@ def main():
     #data_manual_platform_DH = dill.load(open("../data/data_manual_platform_DH", "rb"))
     #plot_raw_data(data_manual_platform_DH)
     # load genotype data and platform phenotype data (DH)
-    data_geno_genotype=dill.load(open("../data/data_geno_genotype","rb"))
-    data_DH_platform = dill.load(open("../data/image_DHline_data", "rb"))
-    field_DH_data =dill.load(open("../data/field_DHline_data",'rb'))
-    gene_field = set(field_DH_data["InbredCode"].unique())
-    gene_platform = set(data_DH_platform["genotype_name"].unique())
-    print(len(gene_field.intersection(gene_platform)))
-    print(len(field_DH_data["InbredCode"].unique()))
-    print(len(data_DH_platform["genotype_name"].unique()))
-    print(len(data_geno_genotype.index))
+    data_geno_genotype=dill.load(open("../data/remove_no_effect_snps","rb"))
+    calculate_SNPs_relationship (snps_df = data_geno_genotype)
+    # data_DH_platform = dill.load(open("../data/image_DHline_data", "rb"))
+    # field_DH_data =dill.load(open("../data/field_DHline_data",'rb'))
+    # gene_field = set(field_DH_data["InbredCode"].unique())
+    # gene_platform = set(data_DH_platform["genotype_name"].unique())
+    # print(len(gene_field.intersection(gene_platform)))
+    # print(len(field_DH_data["InbredCode"].unique()))
+    # print(len(data_DH_platform["genotype_name"].unique()))
+    # print(len(data_geno_genotype.index))
     #print(data_geno_genotype)
     #print(data_DH_platform)
     #read_rdata_to_csv()
