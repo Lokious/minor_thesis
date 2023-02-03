@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy import stats
 import seaborn as sns
-
+from scipy.stats import chi2_contingency
 def read_rdata_to_csv():
 
 
@@ -172,23 +172,35 @@ def remove_no_effect_SNPs(geno_df:pd.DataFrame)->int:
 
     return 0
 
+
 def calculate_SNPs_relationship(snps_df:pd.DataFrame)->pd.DataFrame:
 
-    # if correlation between snps equals to one or minors one, keep one of those
-    corr_snp_df = pd.DataFrame(columns=snps_df.columns,index=snps_df.columns)
-    snps = list(snps_df.columns)
-    while snps!=[]:
-        snp1=snps.pop()
-        for snp2 in snps:
-            correlation = snps_df[snp1].corr(snps_df[snp2])
-            print(correlation)
-            corr_snp_df[snp1,snp2] = correlation
 
+    # select snps based on correlation?
+    ## can not save as a dataframe due to memory error
+    corr_snp_df = {}
+    snps = list(snps_df.columns)
+    print(snps)
+    i = 0
+    while snps!=[]:
+        print(i)
+        snp1=snps.pop()
+        corr_snp_df[snp1]={}
+        for snp2 in snps:
+            corss_tab = pd.crosstab(index=snps_df[snp1],columns=snps_df[snp2])
+            print(corss_tab)
+            correlation = chi2_contingency(corss_tab)
+            #print(correlation)
+            corr_snp_df[snp1][snp2] = correlation[:2]
+            #print(corr_snp_df)
+        else:
+            i +=1
     #save correlation df
-    corr_snp_df.to_csv("../data/correlation_snps_df.csv")
+    with open("../data/chi2_contingency_result","wb") as dillfile:
+        dill.dump(corr_snp_df,dillfile)
     # find where corr = 1 or -1
-    where_snps = corr_snp_df.where(corr_snp_df==(1 or -1))
-    print(where_snps)
+    # where_snps = corr_snp_df.where(corr_snp_df==(1 or -1))
+    # print(where_snps)
     return corr_snp_df
 
 def merge_traits_SNPs(trait_df:pd.DataFrame,geno_df:pd.DataFrame)->pd.DataFrame:
@@ -244,8 +256,10 @@ def main():
     #data_manual_platform_DH = dill.load(open("../data/data_manual_platform_DH", "rb"))
     #plot_raw_data(data_manual_platform_DH)
     # load genotype data and platform phenotype data (DH)
-    data_geno_genotype=dill.load(open("../data/remove_no_effect_snps","rb"))
-    calculate_SNPs_relationship (snps_df = data_geno_genotype)
+    data_geno_genotype=dill.load(open("../data/data_geno_genotype","rb"))
+    print(data_geno_genotype)
+
+    calculate_SNPs_relationship(snps_df=data_geno_genotype)
     # data_DH_platform = dill.load(open("../data/image_DHline_data", "rb"))
     # field_DH_data =dill.load(open("../data/field_DHline_data",'rb'))
     # gene_field = set(field_DH_data["InbredCode"].unique())
