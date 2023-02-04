@@ -12,6 +12,7 @@ import numpy as np
 from scipy import stats
 import seaborn as sns
 from scipy.stats import chi2_contingency
+import math
 def read_rdata_to_csv():
 
 
@@ -83,7 +84,14 @@ def read_rdata_to_csv():
         dill.dump(data_geno_map, dill_file)
 
     return DH_field_data,hybrids_field_data,DH_platform_data,hybrids_platform_data,data_geno_genotype,data_geno_map
+def log_transform(raw_df:pd.DataFrame,columns:list)->pd.DataFrame:
 
+    print(raw_df)
+    #log transform (use log(x+1) to deal with zero value)for LA, height and biomass
+    new_columns = [(x+"_log_transformed") for x in columns]
+    raw_df[new_columns]=raw_df[columns].apply(lambda x:np.log(x+1))
+    print(raw_df[new_columns])
+    return raw_df
 def check_genotype(dataframe:pd.DataFrame,check_geno="CH"):
     """
     Return genotype name for Check genotypes
@@ -124,7 +132,7 @@ def calculate_average_traits_value_by_day(trait_df:pd.DataFrame)->pd.DataFrame:
     print(after_average)
     useful_column=after_average.merge(non_numical_column,on=["plantid","Day"])
     print(useful_column)
-    useful_column.to_csv("../data/image_DHline_data_after_average_based_on_day.csv")
+    #useful_column.to_csv("../data/image_DHline_data_after_average_based_on_day.csv")
 
     return useful_column
 
@@ -172,7 +180,46 @@ def remove_no_effect_SNPs(geno_df:pd.DataFrame)->int:
 
     return 0
 
+def select_SNPs_based_on_distance(map_gene_df):
+    """
+    The average physical to genetic ratio in the maize genome is 182 kb per
+    cM with great variation, ranging from >1.8 Mb/cM in centromeric regions
+    to <10 kb in telomeric region.
+    https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1934398/
+    :return:
+    """
+    #I will select one SNP per 1.82Mb
+    coverntion_constant = 1820000
 
+    #group by Chromesome
+    groups_objects = map_gene_df.groupby("chr")
+    chosen_snp_df = pd.DataFrame()
+    for group in groups_objects.groups:
+        chr_group = groups_objects.get_group(group)
+        print(chr_group)
+        chr = chr_group["chr"].unique()[0]
+        print(chr)
+        snp_list = list(chr_group.index)
+        #print(snp_list)
+        keep_snp_list = []
+        while snp_list != []:
+            snp_id = snp_list.pop(0)
+            snp_pos = chr_group.loc[snp_id,"pos"]
+            #print(snp_pos)
+            if keep_snp_list == []:
+                keep_snp_list.append(snp_id)
+            else:
+                #compare the distance between current position and next SNP's position
+                current_pos = chr_group.loc[keep_snp_list[-1],"pos"]
+                distance = snp_pos - current_pos
+                if distance > coverntion_constant:
+                    print(distance)
+                    keep_snp_list.append(snp_id)
+        print("keep {} snps on chr{}".format(len(keep_snp_list),chr))
+        chosen_snp_df = pd.concat([chosen_snp_df,map_gene_df.loc[keep_snp_list,:]])
+    else:
+        print(chosen_snp_df)
+        return chosen_snp_df
 def calculate_SNPs_relationship(snps_df:pd.DataFrame)->pd.DataFrame:
 
 
@@ -256,11 +303,12 @@ def main():
     #data_manual_platform_DH = dill.load(open("../data/data_manual_platform_DH", "rb"))
     #plot_raw_data(data_manual_platform_DH)
     # load genotype data and platform phenotype data (DH)
-    data_geno_genotype=dill.load(open("../data/data_geno_genotype","rb"))
-    print(data_geno_genotype)
-
-    calculate_SNPs_relationship(snps_df=data_geno_genotype)
-    # data_DH_platform = dill.load(open("../data/image_DHline_data", "rb"))
+    #data_geno_genotype=dill.load(open("../data/data_geno_genotype","rb"))
+    data_geno_map= dill.load(open("../data/data_geno_map", "rb"))
+    #print(data_geno_genotype)
+    select_SNPs_based_on_distance(data_geno_map)
+    #calculate_SNPs_relationship(snps_df=data_geno_genotype)
+    #data_DH_platform = dill.load(open("../data/image_DHline_data", "rb"))
     # field_DH_data =dill.load(open("../data/field_DHline_data",'rb'))
     # gene_field = set(field_DH_data["InbredCode"].unique())
     # gene_platform = set(data_DH_platform["genotype_name"].unique())
@@ -271,8 +319,10 @@ def main():
     #print(data_geno_genotype)
     #print(data_DH_platform)
     #read_rdata_to_csv()
-    #calculate_average_traits_value_by_day(data_DH_platform)
-
+    # average_df = calculate_average_traits_value_by_day(data_DH_platform)
+    # transfor_columns = ["LA_Estimated","Height_Estimated","Biomass_Estimated"]
+    # log_transformed_df = log_transform(average_df,transfor_columns)
+    # log_transformed_df.to_csv("../data/image_DHline_data_after_average_based_on_day.csv")
     #remove_no_effect_SNPs(data_DH_platform,data_geno_genotype)
     #gene_after_remove=dill.load(open("../data/remove_no_effect_snps","rb"))
 
