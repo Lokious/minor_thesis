@@ -33,10 +33,10 @@ def generate_data():
 
 def return_simulated_dataset():
     input_data = pd.DataFrame()
-    for i in range(500):
+    for i in range(418):
         new_column = generate_data()
         input_data = pd.concat([input_data,new_column],axis=1)
-    input_data.columns=list(range(1,501))
+    input_data.columns=list(range(0,418))
     return input_data
 
 
