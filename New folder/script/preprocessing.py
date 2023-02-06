@@ -220,6 +220,8 @@ def select_SNPs_based_on_distance(map_gene_df):
     else:
         print(chosen_snp_df)
         return chosen_snp_df
+
+
 def calculate_SNPs_relationship(snps_df:pd.DataFrame)->pd.DataFrame:
 
 
@@ -287,7 +289,7 @@ def plot_raw_data(DH_platform_data):
             #it has 4 different harvest day
             # print(plant['DAS'])
             # print(plant['LA_Estimated'])
-            plt.plot(plant["DAS"],plant['visi'],label=plant.loc[day, 'plantid'],linewidth=0.2)
+            plt.plot(plant["DAS"],plant['Biomass_Estimated'],label=plant.loc[day, 'plantid'],linewidth=0.2)
             plt.axvline(x = plant.loc[list(plant["DAS"].index)[-1],"DAS"], linestyle = '-',linewidth=1)
 
             #plt.legend()
@@ -306,7 +308,8 @@ def main():
     #data_geno_genotype=dill.load(open("../data/data_geno_genotype","rb"))
     data_geno_map= dill.load(open("../data/data_geno_map", "rb"))
     #print(data_geno_genotype)
-    select_SNPs_based_on_distance(data_geno_map)
+    chonsen_snps_mapdf = select_SNPs_based_on_distance(data_geno_map)
+    chonsen_snps_mapdf.to_csv("../data/chosen_snps_map.csv")
     #calculate_SNPs_relationship(snps_df=data_geno_genotype)
     #data_DH_platform = dill.load(open("../data/image_DHline_data", "rb"))
     # field_DH_data =dill.load(open("../data/field_DHline_data",'rb'))
