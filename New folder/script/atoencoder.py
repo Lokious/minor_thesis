@@ -12,6 +12,7 @@ class Encoder(nn.Module):
         super(Encoder, self).__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers
+        # https://pytorch.org/docs/stable/generated/torch.nn.LSTM.html
         self.lstm = nn.LSTM(
             input_size,
             hidden_size,
@@ -22,8 +23,9 @@ class Encoder(nn.Module):
 
     def forward(self, x):
         # x: tensor of shape (batch_size, seq_length, hidden_size)
-        outputs, (hidden, cell) = self.lstm(x)
+        encoder_outputs, (hidden, cell) = self.lstm(x)
         return (hidden, cell)
+
 
 class Decoder(nn.Module):
     def __init__(
@@ -48,7 +50,10 @@ class Decoder(nn.Module):
         prediction = self.fc(output)
         return prediction, (hidden, cell)
 
+class LSTM_AE(nn.Module):
 
+    def __init__(self):
+        super().__init__()
 
 
 
