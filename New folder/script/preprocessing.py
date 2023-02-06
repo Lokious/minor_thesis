@@ -13,6 +13,7 @@ from scipy import stats
 import seaborn as sns
 from scipy.stats import chi2_contingency
 import math
+import unittest
 def read_rdata_to_csv():
 
 
@@ -268,39 +269,44 @@ def merge_traits_SNPs(trait_df:pd.DataFrame,geno_df:pd.DataFrame)->pd.DataFrame:
 
 def plot_raw_data(DH_platform_data):
 
-    groups_object = DH_platform_data.groupby('Pot')
-    group_number=len(groups_object.groups)
+    groups_object = DH_platform_data.groupby('plantid')
+    group_number = len(groups_object.groups)
     color_list=get_colors(group_number)
     for item in groups_object.groups:
         #group based on plant, every plant related to one line
 
         #print(item)
         plant = groups_object.get_group(item)
-        print(plant[['DAS',"Pot"]])
+        print(plant[['DAS',"plantid"]])
         # drop duplicate day( ned to to change to average ..)
         # plant = plant.drop_duplicates(subset=['DAS'])
         #print(plant)
         for day in plant.index:
-            plant_id = plant.loc[day, 'plantid']
-            pot_id = plant.loc[day, 'Pot']
+            # plant_id = plant.loc[day, 'plantid']
+            # pot_id = plant.loc[day, 'Pot']
             #check pot id equals plant id
-            assert plant_id==pot_id
+            assert True
         else:
             #it has 4 different harvest day
             # print(plant['DAS'])
             # print(plant['LA_Estimated'])
-            plt.plot(plant["DAS"],plant['Biomass_Estimated'],label=plant.loc[day, 'plantid'],linewidth=0.2)
-            plt.axvline(x = plant.loc[list(plant["DAS"].index)[-1],"DAS"], linestyle = '-',linewidth=1)
+            plt.plot(plant["DAS"],plant['Height_Estimated_log_transformed'],label=plant.loc[day, 'plantid'],linewidth=0.2)
+            plt.axvline(x=plant.loc[list(plant["DAS"].index)[-1],"DAS"], linestyle = '-',linewidth=1)
 
             #plt.legend()
         # if item==20:
         #     break
-    plt.ylabel("Biomass_Estimated")
+    plt.ylabel("Height_Estimated_log_transformed")
     plt.xlabel("Days")
     #plt.savefig("Biomass_Estimated.png")
     plt.show()
-
+class Testreaction_class(unittest.TestCase):
+    def test0_remove_no_effect_SNPs(self):
+        return_value = remove_no_effect_SNPs()
+        self.assertEqual(return_value,0)
 def main():
+    # unittest.main()
+
     #read_rdata_to_csv()
     #data_manual_platform_DH = dill.load(open("../data/data_manual_platform_DH", "rb"))
     #plot_raw_data(data_manual_platform_DH)

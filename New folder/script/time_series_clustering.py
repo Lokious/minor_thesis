@@ -57,17 +57,26 @@ def read_and_reformat(file:str):
     return  new_df_LA,new_df_Height,new_df_Biomass
 def clusterinf(data_df):
     from tslearn.clustering import TimeSeriesKMeans
+    print(data_df)
+    data_df.reset_index(inplace=True,drop=True)
+    print(data_df)
     model = TimeSeriesKMeans(n_clusters=418, metric="dtw", max_iter=10)
     model.fit(data_df.T)
     y = model.predict(data_df.T)
     print(y)
+    y = pd.DataFrame(data=y)
+    y.to_csv("clustering_result.csv")
 
 
 
 def main():
     LA,Height,Biomass = read_and_reformat(file="../data/image_DHline_data_after_average_based_on_day.csv")
+    from preprocessing import plot_raw_data
 
-    clusterinf(LA)
+    df = pd.read_csv("../data/image_DHline_data_after_average_based_on_day.csv",header=0,index_col=0)
+    df = df.dropna()
+    plot_raw_data(df)
+    #clusterinf(LA)
 
 
 
