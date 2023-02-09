@@ -15,33 +15,30 @@ def generate_data():
     features = ['trait_1','trait_2','traits_3']
     genoypes = 418
     time_step = 41
+    repetation = 3 # represent the repetition of genotypes
     time_series = []
 
     for feature in features:
         # create time point(X)
         feature_df = pd.DataFrame()
+        L = random.randint(30, 60)
         for genotype in range(genoypes):
             time = np.array([x for x in range(0, time_step)])
             #print(time)
-
-            # create Y based on logistic function
-            Y = []
             ## inilize parameters
             k = random.uniform(0.3, 0.5)
-            L = random.randint(30, 60)
             T = 30
-            #print(k, L, T)
-            for t in time:
-                # calculate Y and also add gaussian noise
-                Y.append((L / (1 + np.exp(-k * (t - T))))+ random.uniform(0, 1))
-
-
-            #Y = np.array([(y + random.uniform(0, 3)) for y in Y])
-            Y = pd.DataFrame(data=Y,index=range(time_step),columns=[genotype])
-            feature_df = pd.concat([feature_df,Y],axis=1)
-            # plt.scatter(time, Y)
-            # plt.show()
-
+            for rep in range(repetation):
+                # create Y based on logistic function
+                Y = []
+                for t in time:
+                    # calculate Y and also add gaussian noise
+                    Y.append((L / (1 + np.exp(-k * (t - T))))+random.uniform(0, 1))
+                Y_df = pd.DataFrame(data=Y,index=range(time_step),columns=[str(genotype)+"_"+str(rep)])
+                feature_df = pd.concat([feature_df,Y_df],axis=1)
+                # plt.plot(time, Y)
+                # plt.show()
+        print(feature_df.shape)
         time_series.append(feature_df)
         #print(time_series)
     return time_series
