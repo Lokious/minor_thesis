@@ -35,7 +35,7 @@ def generate_data():
                 Y_without_noise = []
                 for t in time:
                     # calculate Y and also add gaussian noise
-                    noise = random.uniform(0.1,1)
+                    noise = random.uniform(-1,1)
                     Y_without_noise.append((L / (1 + np.exp(-k * (t - T)))))
                     Y.append((L / (1 + np.exp(-k * (t - T))))+noise)
                 Y_df = pd.DataFrame(data=Y,index=range(time_step),columns=[(str(genotype)+"_"+str(rep))])

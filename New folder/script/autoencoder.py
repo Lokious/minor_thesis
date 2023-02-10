@@ -126,13 +126,13 @@ def model_training(model,num_epochs,train_loader,test_dataset,no_noise_dataset,f
 
         test_outputs = model(test_dataset)
         print("test lost compare to input data")
-        test_loss = criterion(test_outputs, test_dataset)
-        print('Test Loss: {:.4f}'.format(test_loss.item()))
+        test_loss_1 = criterion(test_outputs, test_dataset)
+        print('Test Loss: {:.4f}'.format(test_loss_1.item()))
 
         full_dataset_output = model(full_dataset)
         print("test lost compare to no_noise data")
-        test_loss = criterion(full_dataset_output, no_noise_dataset)
-        print('Test Loss: {:.4f}'.format(test_loss.item()))
+        test_loss_2 = criterion(full_dataset_output, no_noise_dataset)
+        print('Test Loss: {:.4f}'.format(test_loss_2.item()))
     return test_outputs
 
 def data_prepare(simulated_dataset):
@@ -242,7 +242,7 @@ def main():
     # X_tensor = generate_dataset2()
 
     # Shuffle the dataset
-    indices = torch.randperm(num_plants)
+    indices = torch.randperm(num_plants*3)
     X_tensor = X_tensor[indices]
 
     # normalize whole dataset
@@ -266,7 +266,7 @@ def main():
     no_noise_tensor = data_prepare(no_noise_dfs)
     no_noise_datasets,no_noise_scaler = normalization(no_noise_tensor)
     # Set the batch size
-    batch_size = 1
+    batch_size = 10
 
     # Create the dataloader for the training dataset
     train_dataloader = torch.utils.data.DataLoader(train_dataset,
@@ -282,6 +282,9 @@ def main():
     model = LSTMAutoencoder(input_size, hidden_size, num_layers,dropout=0.0)
     # print parameteres
     count_parameters(model)
+    print(X_full_dataset.shape)
+    print(no_noise_datasets.shape)
+    print(test_dataset.shape)
     test_prediction = model_training(model, num_epochs, train_dataloader, test_dataset,no_noise_datasets,X_full_dataset)
     print("test prediction")
     print(test_prediction.shape)
