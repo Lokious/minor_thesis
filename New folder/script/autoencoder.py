@@ -35,6 +35,8 @@ class LSTMAutoencoder(nn.Module):
         # x = self.fc2(x)
         x, (hidden, cell) = self.decoder(x)
         return x
+
+
 class GRUAutoencoder(nn.Module):
     #less parameters compare to LSTM
     def __init__(self, input_size, hidden_size, num_layers, dropout):
@@ -59,7 +61,9 @@ class GRUAutoencoder(nn.Module):
         x, hidden = self.de_gru1(x)
         x, hidden = self.de_gru2(x)
         return x
-#Define the Encoder class
+
+
+# Define the Encoder class
 class Encoder(nn.Module):
     def __init__(self, input_size, hidden_size, num_layers, dropout=0.0):
         super(Encoder, self).__init__()
@@ -68,6 +72,7 @@ class Encoder(nn.Module):
     def forward(self, x):
         x, (hidden, cell) = self.lstm(x)
         return x,hidden, cell
+
 
 # Define the Decoder class
 class Decoder(nn.Module):
@@ -79,6 +84,7 @@ class Decoder(nn.Module):
         decoder_input = torch.zeros(hidden.shape[0], seq_len, hidden_size)
         decoded, _ = self.lstm(decoder_input, (hidden, cell))
         return decoded
+
 
 # Define the Autoencoder class
 class Autoencoder(torch.nn.Module):
@@ -95,7 +101,7 @@ class Autoencoder(torch.nn.Module):
         decoded = self.decoder(hidden, cell, x.shape[1])
         return decoded
 
-def model_training(model,num_epochs,train_loader,test_dataset,no_noise_dataset):
+def model_training(model,num_epochs,train_loader,test_dataset,no_noise_dataset,full_dataset):
 
     # Define the loss function and optimizer
     criterion = nn.MSELoss()
@@ -123,8 +129,9 @@ def model_training(model,num_epochs,train_loader,test_dataset,no_noise_dataset):
         test_loss = criterion(test_outputs, test_dataset)
         print('Test Loss: {:.4f}'.format(test_loss.item()))
 
+        full_dataset_output = model(full_dataset)
         print("test lost compare to no_noise data")
-        test_loss = criterion(test_outputs, no_noise_dataset)
+        test_loss = criterion(full_dataset_output, no_noise_dataset)
         print('Test Loss: {:.4f}'.format(test_loss.item()))
     return test_outputs
 
@@ -238,6 +245,10 @@ def main():
     indices = torch.randperm(num_plants)
     X_tensor = X_tensor[indices]
 
+    # normalize whole dataset
+    X_full_tensor = copy.deepcopy(X_tensor)
+    X_full_dataset, _ = normalization(X_full_tensor)
+
     # Split the dataset into training and test sets
     train_ratio = 0.8
     train_size = int(train_ratio * num_plants)
@@ -271,7 +282,7 @@ def main():
     model = LSTMAutoencoder(input_size, hidden_size, num_layers,dropout=0.0)
     # print parameteres
     count_parameters(model)
-    test_prediction = model_training(model, num_epochs, train_dataloader, test_dataset,no_noise_datasets)
+    test_prediction = model_training(model, num_epochs, train_dataloader, test_dataset,no_noise_datasets,X_full_dataset)
     print("test prediction")
     print(test_prediction.shape)
     test_prediction = torch.permute(test_prediction, (2, 0, 1))
