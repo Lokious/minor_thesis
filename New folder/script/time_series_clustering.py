@@ -53,9 +53,14 @@ def read_and_reformat(file:str):
     #use the average to fill in the NA
     print(time_list)
     for i in range(len(time_list)):
-        print(i)
+        #print(i)
         for column in range(len(plantid_list)):
+            # if int(column) == 676:
+            #     print("column 676")
+            #     #print(new_df_LA.iloc[i,column])
+            #     print(i)
             if (pd.isna(new_df_LA.iloc[i,column])):
+                #print(i,column)
                 try:
                     if i == 0:
                         # if the NA at the first time step
@@ -65,22 +70,25 @@ def read_and_reformat(file:str):
                         new_df_LA.iloc[i, column] = new_df_LA.iloc[i - 1, column]
                     else:
 
-                        print("column {}".format(column))
+                        #print("column {}".format(column))
                         move_step = 1
                         if (pd.isna(new_df_LA.iloc[i-move_step,column]) or pd.isna(new_df_LA.iloc[i+move_step,column]))==False:
-                            print(new_df_LA.iloc[i-move_step,column],new_df_LA.iloc[i+move_step,column])
+                            #print(new_df_LA.iloc[i-move_step,column],new_df_LA.iloc[i+move_step,column])
                             average_value = (new_df_LA.iloc[i-move_step,column] + new_df_LA.iloc[i+move_step,column])/2
-                            print("average {}".format(average_value))
+                            #print("average {}".format(average_value))
                             new_df_LA.iloc[i,column] = average_value
                         else:
                             raise ValueError("nan in the besides cell(s)")
                 except:
                     # if there are two or more continues NA
-                    print("not the first nor the last")
+                    #print("not the first nor the last")
                     while (i+move_step < len(time_list)-1):
                         try:
+                            if int(column) == 676:
+                                print("column 676")
+                                #print(new_df_LA.iloc[i - 1, column])
                             move_step += 1
-                            print(move_step+i)
+                            #print(move_step+i)
                             new_df_LA.iloc[i, column] = new_df_LA.iloc[
                             i - 1, column] + ((new_df_LA.iloc[i + move_step, column] - new_df_LA.iloc[
                             i - 1, column]) / (move_step+1))
@@ -95,14 +103,23 @@ def read_and_reformat(file:str):
                         move_step = 1
                         while (i-move_step) > 0:
                             if pd.isna(new_df_LA.iloc[i - move_step, column])==False:
-                                new_df_LA.iloc[i, column] = new_df_LA.iloc[i - move_step, column]
+                                new_df_LA.iloc[i, column] = new_df_LA.iloc[i-move_step, column]
+                                print(new_df_LA.iloc[i, column])
+                                print("fill")
                                 break
                             else:
-                                move_step +=1
+                                move_step += 1
                                 continue
-                    print("fill with average")
+                        else:
+                            raise ValueError("something wrong")
+                    #print("fill with average")
+            # if int(column) == 676:
+            #     print(new_df_LA.iloc[i,column])
+            # if pd.isna(new_df_LA.iloc[i,column])==True:
+            #     print("NA did not be filled?")
+            #     print(i,column)
     for i in range(len(time_list)):
-        print(i)
+        #print(i)
         for column in range(len(plantid_list)):
             if (pd.isna(new_df_Height.iloc[i,column])):
                 try:
@@ -114,22 +131,22 @@ def read_and_reformat(file:str):
                         new_df_Height.iloc[i, column] = new_df_Height.iloc[i - 1, column]
                     else:
 
-                        print("column {}".format(column))
+                        #print("column {}".format(column))
                         move_step = 1
                         if (pd.isna(new_df_Height.iloc[i-move_step,column]) or pd.isna(new_df_Height.iloc[i+move_step,column]))==False:
-                            print(new_df_Height.iloc[i-move_step,column],new_df_Height.iloc[i+move_step,column])
+                            #print(new_df_Height.iloc[i-move_step,column],new_df_Height.iloc[i+move_step,column])
                             average_value = (new_df_Height.iloc[i-move_step,column] + new_df_Height.iloc[i+move_step,column])/2
-                            print("average {}".format(average_value))
+                            #print("average {}".format(average_value))
                             new_df_Height.iloc[i,column] = average_value
                         else:
                             raise ValueError("nan in the besides cell(s)")
                 except:
                     # if there are two or more continues NA
-                    print("not the first nor the last")
+                    #print("not the first nor the last")
                     while (i+move_step < len(time_list)-1):
                         try:
                             move_step += 1
-                            print(move_step+i)
+                            #print(move_step+i)
                             new_df_Height.iloc[i, column] = new_df_Height.iloc[
                             i - 1, column] + ((new_df_Height.iloc[i + move_step, column] - new_df_Height.iloc[
                             i - 1, column]) / (move_step+1))
@@ -140,7 +157,7 @@ def read_and_reformat(file:str):
                         except:
                             continue
                     else:
-                        print("all following values are na, fill in the following cell with the last non-na value")
+                        #print("all following values are na, fill in the following cell with the last non-na value")
                         move_step = 1
                         while (i-move_step) > 0:
                             if pd.isna(new_df_Height.iloc[i - move_step, column])==False:
@@ -149,9 +166,9 @@ def read_and_reformat(file:str):
                             else:
                                 move_step +=1
                                 continue
-                    print("fill with average")
+                    #print("fill with average")
     for i in range(len(time_list)):
-        print(i)
+        #print(i)
         for column in range(len(plantid_list)):
             if (pd.isna(new_df_Biomass.iloc[i,column])):
                 try:
@@ -163,22 +180,22 @@ def read_and_reformat(file:str):
                         new_df_Biomass.iloc[i, column] = new_df_Biomass.iloc[i - 1, column]
                     else:
 
-                        print("column {}".format(column))
+                        #print("column {}".format(column))
                         move_step = 1
                         if (pd.isna(new_df_Biomass.iloc[i-move_step,column]) or pd.isna(new_df_Biomass.iloc[i+move_step,column]))==False:
-                            print(new_df_Biomass.iloc[i-move_step,column],new_df_Biomass.iloc[i+move_step,column])
+                            #print(new_df_Biomass.iloc[i-move_step,column],new_df_Biomass.iloc[i+move_step,column])
                             average_value = (new_df_Biomass.iloc[i-move_step,column] + new_df_Biomass.iloc[i+move_step,column])/2
-                            print("average {}".format(average_value))
+                            #print("average {}".format(average_value))
                             new_df_Biomass.iloc[i,column] = average_value
                         else:
                             raise ValueError("nan in the besides cell(s)")
                 except:
                     # if there are two or more continues NA
-                    print("not the first nor the last")
+                    #print("not the first nor the last")
                     while (i+move_step < len(time_list)-1):
                         try:
                             move_step += 1
-                            print(move_step+i)
+                            #print(move_step+i)
                             new_df_Biomass.iloc[i, column] = new_df_Biomass.iloc[
                             i - 1, column] + ((new_df_Biomass.iloc[i + move_step, column] - new_df_Biomass.iloc[
                             i - 1, column]) / (move_step+1))
@@ -189,7 +206,7 @@ def read_and_reformat(file:str):
                         except:
                             continue
                     else:
-                        print("all following values are na, fill in the following cell with the last non-na value")
+                        #print("all following values are na, fill in the following cell with the last non-na value")
                         move_step = 1
                         while (i-move_step) > 0:
                             if pd.isna(new_df_Biomass.iloc[i - move_step, column])==False:
@@ -198,12 +215,12 @@ def read_and_reformat(file:str):
                             else:
                                 move_step +=1
                                 continue
-                    print("fill with average")
+                    #print("fill with average")
 
-    print(new_df_LA)
-    # new_df_LA.to_csv("../data/df_LA.csv")
-    # new_df_Height.to_csv("../data/df_Height.csv")
-    # new_df_Biomass.to_csv("../data/df_Biomass.csv")
+    #print(new_df_LA)
+    new_df_LA.to_csv("../data/df_LA.csv")
+    new_df_Height.to_csv("../data/df_Height.csv")
+    new_df_Biomass.to_csv("../data/df_Biomass.csv")
     return new_df_LA,new_df_Height,new_df_Biomass
 
 def clusterinf(data_df):
@@ -213,7 +230,7 @@ def clusterinf(data_df):
     # 418 genotypes
     from sklearn.cluster import KMeans
     model = KMeans(n_clusters=3,n_init=20)
-
+    print(data_df.isna().values.any())
     y = model.fit_predict(data_df.T)
     y = pd.DataFrame(data=y,columns=["predict"],index=list(range(1200)))
     # print(y)
@@ -221,7 +238,7 @@ def clusterinf(data_df):
     y.to_csv("clustering_result.csv")
 
 def main():
-    LA,Height,Biomass = read_and_reformat(file="../data/image_DHline_data_after_average_based_on_day.csv")
+    LA, Height, Biomass = read_and_reformat(file="../data/image_DHline_data_after_average_based_on_day.csv")
     # print("LA")
     # print(LA)
     clusterinf(LA)
