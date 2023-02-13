@@ -13,7 +13,7 @@ from simulated_data import return_simulated_dataset
 from sklearn.model_selection import GroupShuffleSplit
 # set device: cup or GPU
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-hidden_size=2
+
 
 # # Define the LSTM autoencoder model
 class LSTMAutoencoder(nn.Module):
@@ -41,13 +41,13 @@ class GRUAutoencoder(nn.Module):
     #less parameters compare to LSTM
     def __init__(self, input_size, hidden_size, num_layers, dropout):
         super().__init__()
-
+        hidden_size_2 = 2
         self.gru1 = nn.GRU(input_size, hidden_size, num_layers,
                              batch_first=True)
-        self.gru2 = nn.GRU(hidden_size, hidden_size/2, num_layers,
+        self.gru2 = nn.GRU(hidden_size, hidden_size_2, num_layers,
                              batch_first=True)
 
-        self.de_gru1 = nn.GRU(hidden_size/2, hidden_size, num_layers,
+        self.de_gru1 = nn.GRU(hidden_size_2, hidden_size, num_layers,
                                 batch_first=True)
         self.de_gru2 = nn.GRU(hidden_size, input_size, num_layers,
                                 batch_first=True)
@@ -62,51 +62,54 @@ class GRUAutoencoder(nn.Module):
         x, hidden = self.de_gru2(x)
         return x
 
+#
+# # Define the Encoder class
+# class Encoder(nn.Module):
+#     def __init__(self, input_size, hidden_size, num_layers, dropout=0.0):
+#         super(Encoder, self).__init__()
+#         self.lstm = torch.nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, dropout=dropout)
+#
+#     def forward(self, x):
+#         x, (hidden, cell) = self.lstm(x)
+#         return x,hidden, cell
+#
+#
+# # Define the Decoder class
+# class Decoder(nn.Module):
+#     def __init__(self, hidden_size, output_size, num_layers, dropout=0.0):
+#         super(Decoder, self).__init__()
+#         self.lstm = torch.nn.LSTM(hidden_size, output_size, num_layers, batch_first=True, dropout=dropout)
+#
+#     def forward(self, hidden, cell, seq_len):
+#         decoder_input = torch.zeros(hidden.shape[0], seq_len, hidden_size)
+#         decoded, _ = self.lstm(decoder_input, (hidden, cell))
+#         return decoded
+#
+#
+# # Define the Autoencoder class
+# class Autoencoder(torch.nn.Module):
+#     """
+#     Error !!
+#     """
+#     def __init__(self, input_size, hidden_size, num_layers, dropout=0.0):
+#         super(Autoencoder, self).__init__()
+#         self.encoder = Encoder(input_size, hidden_size, num_layers, dropout)
+#         self.decoder = Decoder(hidden_size, input_size, num_layers, dropout)
+#
+#     def forward(self, x):
+#         x, hidden, cell = self.encoder(x)
+#         decoded = self.decoder(hidden, cell, x.shape[1])
+#         return decoded
 
-# Define the Encoder class
-class Encoder(nn.Module):
-    def __init__(self, input_size, hidden_size, num_layers, dropout=0.0):
-        super(Encoder, self).__init__()
-        self.lstm = torch.nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, dropout=dropout)
-
-    def forward(self, x):
-        x, (hidden, cell) = self.lstm(x)
-        return x,hidden, cell
-
-
-# Define the Decoder class
-class Decoder(nn.Module):
-    def __init__(self, hidden_size, output_size, num_layers, dropout=0.0):
-        super(Decoder, self).__init__()
-        self.lstm = torch.nn.LSTM(hidden_size, output_size, num_layers, batch_first=True, dropout=dropout)
-
-    def forward(self, hidden, cell, seq_len):
-        decoder_input = torch.zeros(hidden.shape[0], seq_len, hidden_size)
-        decoded, _ = self.lstm(decoder_input, (hidden, cell))
-        return decoded
-
-
-# Define the Autoencoder class
-class Autoencoder(torch.nn.Module):
-    """
-    Error !!
-    """
-    def __init__(self, input_size, hidden_size, num_layers, dropout=0.0):
-        super(Autoencoder, self).__init__()
-        self.encoder = Encoder(input_size, hidden_size, num_layers, dropout)
-        self.decoder = Decoder(hidden_size, input_size, num_layers, dropout)
-
-    def forward(self, x):
-        x, hidden, cell = self.encoder(x)
-        decoded = self.decoder(hidden, cell, x.shape[1])
-        return decoded
-
-def model_training(model,num_epochs,train_loader,test_dataset,no_noise_dataset,full_dataset):
+def model_training(model,num_epochs,train_loader,test_dataset,no_noise_dataset,full_dataset,lr=0.0001,batch_size = 10):
 
     # Define the loss function and optimizer
     criterion = nn.MSELoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    optimizer = optim.Adam(model.parameters(), lr=lr)
     # Training loop
+    print("#######start training######")
+    print("# learning rate: {}".format(lr))
+    print("# batch size: {}".format(batch_size))
     for epoch in range(num_epochs):
         for data in train_loader:
             inputs = data
@@ -124,9 +127,9 @@ def model_training(model,num_epochs,train_loader,test_dataset,no_noise_dataset,f
     # Test the autoencoder model on the test set
     with torch.no_grad():
 
-        test_outputs = model(test_dataset)
+        test_outputs = model(full_dataset)
         print("test lost compare to input data")
-        test_loss_1 = criterion(test_outputs, test_dataset)
+        test_loss_1 = criterion(test_outputs, full_dataset)
         print('Test Loss: {:.4f}'.format(test_loss_1.item()))
 
         full_dataset_output = model(full_dataset)
@@ -217,6 +220,7 @@ def normalization(dataset:torch.tensor)->torch.tensor:
 
 
 def count_parameters(model):
+    print(model)
     table = PrettyTable(["Modules", "Parameters"])
     total_params = 0
     for name, parameter in model.named_parameters():
@@ -224,7 +228,7 @@ def count_parameters(model):
             continue
         param = parameter.numel()
         table.add_row([name, param])
-        total_params+=param
+        total_params += param
     print(table)
     print(f"Total Trainable Params: {total_params}")
     return total_params
@@ -265,31 +269,33 @@ def main():
         no_noise_dfs.append(df)
     no_noise_tensor = data_prepare(no_noise_dfs)
     no_noise_datasets,no_noise_scaler = normalization(no_noise_tensor)
-    # Set the batch size
-    batch_size = 10
+    for lr in [1,0.1,0.01,0.001,0.0001]:
+        for batch_size in [1,10]:
+            input_size = num_features
+            hidden_size = 12
+            num_epochs = 500
+            num_layers = 2
+            # # Set the batch size
+            # batch_size = 10
 
-    # Create the dataloader for the training dataset
-    train_dataloader = torch.utils.data.DataLoader(train_dataset,
-                                                   batch_size=batch_size,
-                                                   shuffle=True)
+            # Create the dataloader for the training dataset
+            train_dataloader = torch.utils.data.DataLoader(train_dataset,
+                                                           batch_size=batch_size,
+                                                           shuffle=True)
 
 
-    # Create the LSTM autoencoder model
-    input_size = num_features
-    hidden_size = 2
-    num_epochs = 100
-    num_layers = 1
-    model = LSTMAutoencoder(input_size, hidden_size, num_layers,dropout=0.0)
-    # print parameteres
-    count_parameters(model)
-    print(X_full_dataset.shape)
-    print(no_noise_datasets.shape)
-    print(test_dataset.shape)
-    test_prediction = model_training(model, num_epochs, train_dataloader, test_dataset,no_noise_datasets,X_full_dataset)
-    print("test prediction")
-    print(test_prediction.shape)
+            # Create the LSTM autoencoder model
+            model = LSTMAutoencoder(input_size, hidden_size, num_layers,dropout=0)
+            # print parameteres
+            count_parameters(model)
+            # print(X_full_dataset.shape)
+            # print(no_noise_datasets.shape)
+            # print(test_dataset.shape)
+            test_prediction = model_training(model, num_epochs, train_dataloader, test_dataset,no_noise_datasets,X_full_dataset,batch_size=batch_size,lr=lr)
+            # print("test prediction")
+    # print(test_prediction.shape)
     test_prediction = torch.permute(test_prediction, (2, 0, 1))
-    print(test_prediction.shape)
+    # print(test_prediction.shape)
     for i,trait in enumerate(test_prediction):
         # inverse transform and print
         # print(trait.shape)
