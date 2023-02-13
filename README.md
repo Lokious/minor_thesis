@@ -3,6 +3,7 @@
 ## steps:
 
 ### data (start from DH line, platfrom data) preprocessing for ML and DL model:
+https://journalofbigdata.springeropen.com/articles/10.1186/s40537-021-00516-9
 	1) missing value in traits data (
 		-deletion(×): 
 		there are longitudinal data, only three rep of each genotype
