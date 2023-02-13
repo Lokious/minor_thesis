@@ -85,14 +85,23 @@ def read_rdata_to_csv():
         dill.dump(data_geno_map, dill_file)
 
     return DH_field_data,hybrids_field_data,DH_platform_data,hybrids_platform_data,data_geno_genotype,data_geno_map
-def log_transform(raw_df:pd.DataFrame,columns:list)->pd.DataFrame:
 
+
+def log_transform(raw_df:pd.DataFrame,columns:list)->pd.DataFrame:
+    """
+    Still keep the NA after log(x+1) transform
+    :param raw_df:
+    :param columns:
+    :return:
+    """
     print(raw_df)
     #log transform (use log(x+1) to deal with zero value)for LA, height and biomass
     new_columns = [(x+"_log_transformed") for x in columns]
     raw_df[new_columns]=raw_df[columns].apply(lambda x:np.log(x+1))
     print(raw_df[new_columns])
     return raw_df
+
+
 def check_genotype(dataframe:pd.DataFrame,check_geno="CH"):
     """
     Return genotype name for Check genotypes
@@ -300,6 +309,10 @@ def plot_raw_data(DH_platform_data):
     plt.xlabel("Days")
     #plt.savefig("Biomass_Estimated.png")
     plt.show()
+
+def missing_value_count(raw_df:str=""):
+    pd.read_csv("")
+
 class Testreaction_class(unittest.TestCase):
     def test0_remove_no_effect_SNPs(self):
         return_value = remove_no_effect_SNPs()

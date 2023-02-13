@@ -137,7 +137,7 @@ def fillna(new_df, time_list, plantid_list):
                 print(i, column)
 
 
-def clusterinf(data_df):
+def clusterinf(data_df,filename:str):
 
     #print(data_df)
     #data_df = data_df["Biomass_Estimated_log_transformed","Height_Estimated_log_transformed","LA_Estimated_log_transformed"]
@@ -147,23 +147,28 @@ def clusterinf(data_df):
     model = KMeans(n_clusters=418,n_init=10)
     print(data_df.isna().values.any())
     y = model.fit_predict(data_df.T)
-    y = pd.DataFrame(data=y,columns=["predict"],index=list(range(1200)))
-    y.to_csv("clustering_result_kmean.csv")
+    y = pd.DataFrame(data=y,columns=["predict"],index=list(range(1,1261)))
+    y.to_csv("clustering_result_kmean_{}.csv".format(filename))
 
     model = TimeSeriesKMeans(n_clusters=418, metric="dtw", max_iter=10)
     model.fit(data_df.T)
     y_ts = model.predict(data_df.T)
-    y_ts = pd.DataFrame(data=y_ts, columns=["predict"], index=list(range(1200)))
-    y_ts.to_csv("clustering_result_tslearn.csv")
+    y_ts = pd.DataFrame(data=y_ts, columns=["predict"], index=list(range(1,1261)))
+    y_ts.to_csv("clustering_result_tslearn_{}.csv".format(filename))
 
 
 def main():
-    LA, Height, Biomass = read_and_reformat(file="../data/image_DHline_data_after_average_based_on_day.csv")
+    #LA, Height, Biomass = read_and_reformat(file="../data/image_DHline_data_after_average_based_on_day.csv")
     # print("LA")
     # print(LA)
-    clusterinf(LA)
-
-
-
+    # clusterinf(Height,"height")
+    # clusterinf(Biomass, "biomass")
+    df = pd.read_csv("../data/image_DHline_data_after_average_based_on_day.csv",header=0,index_col=0)
+    df1=df[["plantid","genotype_name"]].drop_duplicates(subset=["plantid"])
+    LA_result = pd.read_csv("../data/clustering_result_tslearn.csv",header=0,index_col=0)
+    print(len(LA_result["predict"]))
+    df1["cluster"]=LA_result["predict"]
+    print(df1)
+    df1.to_csv("LAtest.csv")
 if __name__ == '__main__':
     main()
