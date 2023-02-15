@@ -147,28 +147,55 @@ def clusterinf(data_df,filename:str):
     model = KMeans(n_clusters=418,n_init=10)
     print(data_df.isna().values.any())
     y = model.fit_predict(data_df.T)
-    y = pd.DataFrame(data=y,columns=["predict"],index=list(range(1,1261)))
+    y = pd.DataFrame(data=y,columns=["predict"],index=list(range(1,1201)))
     y.to_csv("clustering_result_kmean_{}.csv".format(filename))
 
     model = TimeSeriesKMeans(n_clusters=418, metric="dtw", max_iter=10)
     model.fit(data_df.T)
     y_ts = model.predict(data_df.T)
-    y_ts = pd.DataFrame(data=y_ts, columns=["predict"], index=list(range(1,1261)))
+    y_ts = pd.DataFrame(data=y_ts, columns=["predict"], index=list(range(1,1201)))
     y_ts.to_csv("clustering_result_tslearn_{}.csv".format(filename))
 
+from sklearn.metrics import adjusted_rand_score, homogeneity_completeness_v_measure
+
+def evaluate_clustering(true_labels, predicted_labels):
+    ari = adjusted_rand_score(true_labels, predicted_labels)
+    hcv = homogeneity_completeness_v_measure(true_labels, predicted_labels)
+    homogeneity,completeness,v_measure = hcv
+    print("ari score:{:3f}".format(ari))
+    print("homogeneity: {:3f}".format(homogeneity))
+    print("completeness: {:3f}".format(completeness))
+    print("v_measure: {:3f}".format(v_measure))
+    return ari, hcv
+
+def print_clustering_result(true_label,trait="height"):
+
+    height_result_tslearn = pd.read_csv("../data/clustering_result_tslearn_{}.csv".format(trait),header=0,index_col=0)
+    height_result_kmean = pd.read_csv(
+        "../data/clustering_result_kmean_{}.csv".format(trait), header=0,
+        index_col=0)
+
+    # print result
+    print()
+    print("time series clustering, dtw:{}".format(trait))
+    evaluate_clustering(true_label,height_result_tslearn["predict"])
+    print("kmean clustering:{}".format(trait))
+    evaluate_clustering(true_label, height_result_kmean["predict"])
 
 def main():
-    #LA, Height, Biomass = read_and_reformat(file="../data/image_DHline_data_after_average_based_on_day.csv")
-    # print("LA")
-    # print(LA)
+    # LA, Height, Biomass = read_and_reformat(file="../data/image_DHline_data_after_average_based_on_day.csv")
+    # # print("LA")
+    # # print(LA)
     # clusterinf(Height,"height")
     # clusterinf(Biomass, "biomass")
-    df = pd.read_csv("../data/image_DHline_data_after_average_based_on_day.csv",header=0,index_col=0)
-    df1=df[["plantid","genotype_name"]].drop_duplicates(subset=["plantid"])
-    LA_result = pd.read_csv("../data/clustering_result_tslearn.csv",header=0,index_col=0)
-    print(len(LA_result["predict"]))
-    df1["cluster"]=LA_result["predict"]
-    print(df1)
-    df1.to_csv("LAtest.csv")
+    # clusterinf(LA, "LA")
+    df = pd.read_csv(
+        "../data/image_DHline_data_after_average_based_on_day.csv", header=0,
+        index_col=0)
+    df1 = df[["plantid", "genotype_name"]].drop_duplicates(subset=["plantid"])
+    true_label = df1['genotype_name'].astype('category').cat.codes
+    print_clustering_result(true_label, trait="la")
+    print_clustering_result(true_label,trait="height")
+    print_clustering_result(true_label, trait="biomass")
 if __name__ == '__main__':
     main()
