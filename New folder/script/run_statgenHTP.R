@@ -11,6 +11,7 @@ platformdata <- read.csv("../data/image_DHline_data_after_average_based_on_day.c
 
 # plotId: unique ID of the plant
 # multiple value in some day, need to take mean instead of using the raw data at each timepoint
+# which is alredy done
 phenoTP <- createTimePoints(dat = platformdata,
                             experimentName = "DHline11",
                             genotype = "genotype_name",
@@ -22,6 +23,25 @@ phenoTP <- createTimePoints(dat = platformdata,
 attr(phenoTP, 'plotLimObs') 
 timepoints <- getTimePoints(phenoTP)
 summary(phenoTP) 
+
+# # outline detection use log transformed data
+# LA_singleOut <- detectSingleOut(TP = phenoTP,
+#                                       trait = "LA_Estimated_log_transformed",
+#                                       plotIds = platformdata$XY,
+#                                       confIntSize = 5,
+#                                       nnLocfit = 0.5)
+# 
+# Height_singleOut <- detectSingleOut(TP = phenoTP,
+#                                           trait = "Height_Estimated_log_transformed",
+#                                           plotIds = platformdata$XY,
+#                                           confIntSize = 5,
+#                                           nnLocfit = 0.5)
+# 
+# Biomass_singleOut <- detectSingleOut(TP = phenoTP,
+#                                     trait = "Biomass_Estimated_log_transformed",
+#                                     plotIds = platformdata$XY,
+#                                     confIntSize = 5,
+#                                     nnLocfit = 0.5)
 
 # outline detection
 LA_singleOut <- detectSingleOut(TP = phenoTP,
@@ -35,27 +55,106 @@ Height_singleOut <- detectSingleOut(TP = phenoTP,
                                           plotIds = platformdata$XY,
                                           confIntSize = 5,
                                           nnLocfit = 0.5)
+
+Biomass_singleOut <- detectSingleOut(TP = phenoTP,
+                                    trait = "Biomass_Estimated",
+                                    plotIds = platformdata$XY,
+                                    confIntSize = 5,
+                                    nnLocfit = 0.5)
 #PLOT
 plot(LA_singleOut, outOnly = FALSE, plotIds = platformdata$XY[1:3])
 plot(Height_singleOut, outOnly = FALSE, plotIds = platformdata$XY[1:3])
-# count outlier
+plot(Biomass_singleOut, outOnly = FALSE, plotIds = platformdata$XY[1:3])
+# count outlier: around 10% different from killian got, because i did not set 
 sum(LA_singleOut$outlier)
 sum(Height_singleOut$outlier)
-# remove single outlier: Height, LA
-phenoTP_remove_out <- removeSingleOut(phenoTP, LA_singleOut)
-phenoTP_remove_out <- removeSingleOut(phenoTP_remove_out, Height_singleOut)
+sum(Biomass_singleOut$outlier)
+
+# remove single outlier: Height, LA ->outlying point will be replace by NA
+phenoTP_remove_out_LA <- removeSingleOut(phenoTP, LA_singleOut)
+phenoTP_remove_out_LA_Height <- removeSingleOut(phenoTP_remove_out_LA, Height_singleOut)
+phenoTP_remove_out_LA_Height_Biomass <- removeSingleOut(phenoTP_remove_out_LA_Height, Biomass_singleOut)
+
+#It is only possible to use the combination of check and genotype as random.
+#we use genotype as fix without check genotype
 
 # fit model after remove single outlier, will cause error while include the last time point
-LA_spline_model <- fitModels(TP = phenoTP_remove_out,
+LA_spline_model <- fitModels(TP = phenoTP_remove_out_LA_Height_Biomass,
                              trait = "LA_Estimated",
                              timePoints = 1:44,
                              what = "fixed",
                              useRepId = TRUE)
 
-Height_spline_model <- fitModels(TP = phenoTP_remove_out,
+Height_spline_model <- fitModels(TP = phenoTP_remove_out_LA_Height_Biomass,
                                   trait = "Height_Estimated",
                                  timePoints = 1:44,
                                  what = "fixed",
                                  useRepId = TRUE)
+
+#error with Biomass
+# Biomass_spline_model <- fitModels(TP = phenoTP_remove_out_LA_Height_Biomass,
+#                                  trait = "Biomass_Estimated",
+#                                  timePoints = 1:44,
+#                                  what = "fixed",
+#                                  useRepId = TRUE)
 summary(LA_spline_model)
 summary(Height_spline_model)
+#summary(Biomass_spline_model)
+
+plot(LA_spline_model,
+     timePoints = 44,
+     plotType = "spatial",
+     spaTrend = "raw")
+
+plot(Height_spline_model,
+     timePoints = 44,
+     plotType = "spatial",
+     spaTrend = "raw")
+
+# Extracting the spatially corrected data which will use to fit the Spline
+corrected_LA_spline <- getCorrected(LA_spline_model)
+corrected_Height_spline <- getCorrected(Height_spline_model)
+
+# Fitting splines: knot larger-> more smooth, (knot=30 Warning: No convergence after 250 iterations) 
+LA_spline_lines <- fitSpline(inDat = corrected_LA_spline,
+                             trait = "LA_Estimated_corr",
+                             genotypes = unique(as.character(corrected_LA_spline$genotype)),
+                             knots = 20,
+                             minNoTP = 10)
+
+Height_spline_lines <- fitSpline(inDat = corrected_Height_spline,
+                                 trait = "Height_Estimated_corr",
+                                 genotypes = unique(as.character(corrected_Height_spline$genotype)),
+                                 knots = 20,
+                                 minNoTP = 10)
+
+
+plot(LA_spline_lines,genotypes = "DH_KE0006" )
+plot(Height_spline_lines,genotypes = "DH_KE0006" )
+
+# Extracting the predicted values and coefficients for outlier detection
+LA_predDat <- LA_spline_lines$predDat
+LA_coefDat <- LA_spline_lines$coefDat
+Height_predDat <- Height_spline_lines$predDat
+Height_coefDat <- Height_spline_lines$coefDat
+
+
+LA_serieOut <- detectSerieOut(corrDat = corrected_LA_spline,
+                                    predDat = LA_predDat,
+                                    coefDat = LA_coefDat,
+                                    trait = "LA_Estimated_corr",
+                                    genotypes = unique(as.character(corrected_LA_spline$genotype)),
+                                    thrCor = 0.60,
+                                    thrPca = 90,
+                                    thrSlope = 0.60)
+
+
+Height_serieOut <- detectSerieOut(corrDat = corrected_Height_spline,
+                                    predDat = Height_predDat,
+                                    coefDat = Height_coefDat,
+                                    trait = "Height_Estimated_corr",
+                                    genotypes = unique(as.character(corrected_Height_spline$genotype)),
+                                    thrCor = 0.60,
+                                    thrPca = 90,
+                                    thrSlope = 0.60)
+

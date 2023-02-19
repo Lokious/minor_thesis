@@ -1,0 +1,2 @@
+#####AX-90649662#######
+training loss at last epoch: 2.819701502792501
