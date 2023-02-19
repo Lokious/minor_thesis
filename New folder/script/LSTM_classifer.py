@@ -11,6 +11,7 @@ import random
 import matplotlib.pyplot as plt
 import copy
 import torch.optim as optim
+import seaborn as sns
 
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix
@@ -115,6 +116,7 @@ def training(model, x, y, batch_size):
             # Print statistics
             running_loss += loss.item() * inputs.size(0)
 
+
             # if (i + 1) % 10 == 0:
             #     print('Epoch [%d], batch [%d], loss: %.3f' % (
             #         epoch + 1, i + 1, running_loss / ((i + 1) * batch_size)))
@@ -136,10 +138,10 @@ def model_evaluation(model,x,y,snp):
         x = torch.permute(x, (
             1, 0, 2)).float()  # change to (seq_length, batch_size,input_size)
         # Define loss function and optimizer
-        print(x)
+
         criterion = nn.BCELoss()
         outputs = model(x)
-        print(outputs.shape,y.shape,x.shape)
+
         loss = criterion(outputs.float(), y.float())
 
         print("test loss: {}\n".format(loss))
@@ -150,28 +152,45 @@ def model_evaluation(model,x,y,snp):
         #save confusion matrix
         predict_label = torch.round(outputs)
         cm = confusion_matrix(y,predict_label)
-        plt.imshow(cm, cmap=plt.cm.Blues)
-        plt.colorbar()
-        plt.xticks([0, 1])
-        plt.yticks([0, 1])
-        plt.xlabel('Predicted label')
-        plt.ylabel('True label')
+        TN = cm[0, 0]
+        FP = cm[0, 1]
+        FN = cm[1, 0]
+        TP = cm[1, 1]
 
-        # Add values
-        for i in range(2):
-            for j in range(2):
-                plt.text(j, i, cm[i, j],
-                         ha='center', va='center', color='white')
+        print("True Negatives: {}".format(TN))
+        print("False Positives: {}".format(FP))
+        print("False Negatives: {}".format(FN))
+        print("True Positives: {}".format(TP))
+        file = open("output.txt", "a")
+        file.write("True Negatives: {}\n".format(TN))
+        file.write("False Positives: {}\n".format(FP))
+        file.write("False Negatives: {}\n".format(FN))
+        file.write("True Positives: {}\n".format(TP))
+        file.write("test loss: {}\n".format(loss))
+
+        classes = ['Negative', 'Positive']
+        plt.plot()
+        # Create the confusion matrix plot using seaborn
+        sns.heatmap(cm, annot=True, fmt='g', xticklabels=classes, yticklabels=classes)
+
+        # Set the axis labels and title
+        plt.xlabel('Predicted Label')
+        plt.ylabel('True Label')
+        plt.title('Confusion Matrix')
 
         # Save the plot as a PNG file
-        plt.savefig('{}.png'.format(snp))
+        plt.savefig('{}.png'.format(snp),dpi=300)
+        plt.clf()
+        return loss,TN,FP,TP,FN
+
 def main():
 
     # read and pre-process input (build model for each snp)
     snp_df = pd.read_csv("../data/chosen_snps_map.csv", header=0, index_col=0)
     snp_list = list(snp_df.index)
     input_x = dill.load(open("../data/input_data/input_X","rb"))
-    for snp in snp_list:
+    test_result = {}
+    for snp in ["AX-91411604"]:
 
         # x:(time step, number of sequences, inputsize(3))
         # y: (number of sequences, class_number)
@@ -191,7 +210,12 @@ def main():
         training(model, x=x_train, y=y_train, batch_size=10)
 
         # model evaluation
-        model_evaluation(model,x_test,y_test,snp)
-
+        print(y_test)
+        loss,TN,FP,TP,FN = model_evaluation(model,x_test,y_test,snp)
+        test_result[snp]= [loss,TN,FP,TP,FN]
+    else:
+        test_result_df=pd.DataFrame.from_dict(test_result, orient='index',
+                               columns=['test_loss','TN','FP','TP','FN'])
+        test_result_df.to_csv("test_result.csv")
 if __name__ == '__main__':
     main()
