@@ -1,2 +1,12 @@
 #####AX-90649662#######
 training loss at last epoch: 2.819701502792501
+#####AX-91411604#######
+#####AX-91411604#######
+training loss at last epoch: 1.5426658533405566
+--------------------------
+test loss: 0.3576039969921112
+True Negatives: 0
+False Positives: 4
+False Negatives: 0
+True Positives: 351
+test loss: 0.3576039969921112

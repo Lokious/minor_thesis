@@ -25,7 +25,7 @@ class LSTM_classification(nn.Module):
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         self.lstm = nn.LSTM(input_size=input_size, hidden_size=hidden_size,num_layers=num_layers,
-                            dropout=dropout)
+                            dropout=dropout,bidirectional=True)
         self.fc = nn.Linear(hidden_size, 1)
         # output from 0 to 1
         self.sigmoid = nn.Sigmoid()
@@ -60,6 +60,38 @@ class LSTM_classification(nn.Module):
             elif 'bias' in name:
                 nn.init.constant_(param, 0.0)
 
+
+class BiLSTMClassifier(nn.Module):
+    def __init__(self, input_size, hidden_size, num_layers=2, dropout=0.0):
+        super(BiLSTMClassifier, self).__init__()
+        self.hidden_size = hidden_size
+        self.num_layers = num_layers
+        self.num_classes = 1
+
+        self.lstm = nn.LSTM(input_size, hidden_size, num_layers,
+                            batch_first=True, bidirectional=True,dropout=dropout)
+        self.fc = nn.Linear(hidden_size * 2, 1)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x):
+        h0 = torch.zeros(self.num_layers * 2, x.size(0), self.hidden_size).to(
+            x.device)
+        c0 = torch.zeros(self.num_layers * 2, x.size(0), self.hidden_size).to(
+            x.device)
+
+        out, _ = self.lstm(x, (h0, c0))
+        output = self.fc(out[-1, :, :])
+        output = self.sigmoid(output)
+
+        return output
+
+    def init_network(self):
+        # initialize weight and bias
+        for name, param in self.named_parameters():
+            if 'weight' in name:
+                nn.init.xavier_uniform_(param)
+            elif 'bias' in name:
+                nn.init.constant_(param, 0.0)
 
 def training(model, x, y, batch_size):
     """
@@ -126,7 +158,7 @@ def training(model, x, y, batch_size):
         # print('Epoch [%d], loss: %.3f' % (
         #     epoch + 1, running_loss / num_sequences))
     else:
-        file = open("output.txt", "a")
+        file = open("output_bilstm.txt", "a")
         file.write("training loss at last epoch: {}\n".format(
             (running_loss / num_sequences)))
 
@@ -145,7 +177,7 @@ def model_evaluation(model,x,y,snp):
         loss = criterion(outputs.float(), y.float())
 
         print("test loss: {}\n".format(loss))
-        file = open("output.txt", "a")
+        file = open("output_bilstm.txt", "a")
         file.write("--------------------------\n")
         file.write("test loss: {}\n".format(loss))
 
@@ -161,7 +193,7 @@ def model_evaluation(model,x,y,snp):
         print("False Positives: {}".format(FP))
         print("False Negatives: {}".format(FN))
         print("True Positives: {}".format(TP))
-        file = open("output.txt", "a")
+        file = open("output_bilstm.txt", "a")
         file.write("True Negatives: {}\n".format(TN))
         file.write("False Positives: {}\n".format(FP))
         file.write("False Negatives: {}\n".format(FN))
@@ -179,7 +211,7 @@ def model_evaluation(model,x,y,snp):
         plt.title('Confusion Matrix')
 
         # Save the plot as a PNG file
-        plt.savefig('{}.png'.format(snp),dpi=300)
+        plt.savefig('{}_bilstm.png'.format(snp),dpi=300)
         plt.clf()
         return loss,TN,FP,TP,FN
 
@@ -204,7 +236,7 @@ def main():
                                                             test_size=0.3,
                                                             random_state=1)
         # define model
-        model = LSTM_classification(input_size=3, hidden_size=2, dropout=0.01)
+        model = BiLSTMClassifier(input_size=3, hidden_size=2, dropout=0.01)
         # model training
         print(model)
         training(model, x=x_train, y=y_train, batch_size=10)
@@ -216,6 +248,6 @@ def main():
     else:
         test_result_df=pd.DataFrame.from_dict(test_result, orient='index',
                                columns=['test_loss','TN','FP','TP','FN'])
-        test_result_df.to_csv("test_result.csv")
+        test_result_df.to_csv("biLSTM_test_result.csv")
 if __name__ == '__main__':
     main()
