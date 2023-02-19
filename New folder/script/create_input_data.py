@@ -87,6 +87,10 @@ def main():
     snp_list = list(snp_df.index)
     print(snp_list)
     genotype_df = dill.load(open("../data/data_geno_genotype","rb"))
+    # replace 2 with 1 for further binary classification which fit for sigmoid()
+    # output
+    genotype_df = genotype_df.replace({2:1})
+    print(genotype_df)
     selected_snp_df = merge_snp_with_genotype(snp_df,genotype_df)
 
     #read traits df without spatial correction
