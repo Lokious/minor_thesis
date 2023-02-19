@@ -94,6 +94,7 @@ def log_transform(raw_df:pd.DataFrame,columns:list)->pd.DataFrame:
     :param columns:
     :return:
     """
+
     print(raw_df)
     #log transform (use log(x+1) to deal with zero value)for LA, height and biomass
     new_columns = [(x+"_log_transformed") for x in columns]
@@ -173,16 +174,15 @@ def remove_no_effect_SNPs(geno_df:pd.DataFrame)->int:
     geno_df["genotype_name"] = geno_df.index
     geno_df.reset_index(drop=True)
     for i,snp in enumerate(snp_list):
-        print(i)
         if len(geno_df[snp].unique()) == 1:
-            print(geno_df[snp].unique())
-            print("drop")
+            # print(geno_df[snp].unique())
+            # print("drop")
             geno_df.drop(columns=[snp],inplace=True)
         else:
-            percentage=geno_df[snp].value_counts(normalize=True)
-            percentage_dictionary[snp]=percentage
-    print(percentage_dictionary)
-    print(len(percentage_dictionary.keys()))
+            percentage = geno_df[snp].value_counts(normalize=True)
+            percentage_dictionary[snp] = percentage
+    # print(percentage_dictionary)
+    # print(len(percentage_dictionary.keys()))
 
     #save the df after remove snps which is the same for all
     with open ("../data/remove_no_effect_snps","wb") as dillfile:
@@ -232,7 +232,7 @@ def select_SNPs_based_on_distance(map_gene_df):
         return chosen_snp_df
 
 
-def calculate_SNPs_relationship(snps_df:pd.DataFrame)->pd.DataFrame:
+def calculate_SNPs_relationship(snps_df:pd.DataFrame) -> pd.DataFrame:
 
 
     # select snps based on correlation?
@@ -310,25 +310,38 @@ def plot_raw_data(DH_platform_data):
     #plt.savefig("Biomass_Estimated.png")
     plt.show()
 
-def missing_value_count(raw_df:str=""):
-    pd.read_csv("")
+
+def missing_value_count(raw_df: str = "../data/image_DHline_data_after_average_based_on_day_log.csv"):
+
+    df = pd.read_csv(raw_df,header=0,index_col=0)
+    na_count = df.isna().sum().sum()
+    print(na_count)
+    number_of_values = len(df.index)*3
+    print("values number: {}".format(number_of_values))
+    print("{}".format((na_count/number_of_values)))
+
 
 class Testreaction_class(unittest.TestCase):
+
     def test0_remove_no_effect_SNPs(self):
-        return_value = remove_no_effect_SNPs()
-        self.assertEqual(return_value,0)
+        df = pd.read_csv("../data/data_geno_map.csv",header=0,index_col=0)
+        return_value = remove_no_effect_SNPs(df)
+        self.assertEqual(return_value, 0)
+
+    def test1_na_count(self):
+        missing_value_count()
 def main():
-    # unittest.main()
+    unittest.main()
 
     #read_rdata_to_csv()
     #data_manual_platform_DH = dill.load(open("../data/data_manual_platform_DH", "rb"))
     #plot_raw_data(data_manual_platform_DH)
     # load genotype data and platform phenotype data (DH)
     #data_geno_genotype=dill.load(open("../data/data_geno_genotype","rb"))
-    data_geno_map= dill.load(open("../data/data_geno_map", "rb"))
-    #print(data_geno_genotype)
-    chonsen_snps_mapdf = select_SNPs_based_on_distance(data_geno_map)
-    chonsen_snps_mapdf.to_csv("../data/chosen_snps_map.csv")
+    # data_geno_map= dill.load(open("../data/data_geno_map", "rb"))
+    # #print(data_geno_genotype)
+    # chonsen_snps_mapdf = select_SNPs_based_on_distance(data_geno_map)
+    # chonsen_snps_mapdf.to_csv("../data/chosen_snps_map.csv")
     #calculate_SNPs_relationship(snps_df=data_geno_genotype)
     #data_DH_platform = dill.load(open("../data/image_DHline_data", "rb"))
     # field_DH_data =dill.load(open("../data/field_DHline_data",'rb'))
@@ -380,10 +393,3 @@ if __name__ == '__main__':
     main()
 
 
-
-
-# groups_object = DH_data.groupby('Day')
-# for item in groups_object.groups:
-#     print(item)
-#     day_group = groups_object.get_group(item)
-#     print(len(day_group["genotype_name"].unique()))

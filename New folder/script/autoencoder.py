@@ -62,49 +62,11 @@ class GRUAutoencoder(nn.Module):
         x, hidden = self.de_gru2(x)
         return x
 
-#
-# # Define the Encoder class
-# class Encoder(nn.Module):
-#     def __init__(self, input_size, hidden_size, num_layers, dropout=0.0):
-#         super(Encoder, self).__init__()
-#         self.lstm = torch.nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, dropout=dropout)
-#
-#     def forward(self, x):
-#         x, (hidden, cell) = self.lstm(x)
-#         return x,hidden, cell
-#
-#
-# # Define the Decoder class
-# class Decoder(nn.Module):
-#     def __init__(self, hidden_size, output_size, num_layers, dropout=0.0):
-#         super(Decoder, self).__init__()
-#         self.lstm = torch.nn.LSTM(hidden_size, output_size, num_layers, batch_first=True, dropout=dropout)
-#
-#     def forward(self, hidden, cell, seq_len):
-#         decoder_input = torch.zeros(hidden.shape[0], seq_len, hidden_size)
-#         decoded, _ = self.lstm(decoder_input, (hidden, cell))
-#         return decoded
-#
-#
-# # Define the Autoencoder class
-# class Autoencoder(torch.nn.Module):
-#     """
-#     Error !!
-#     """
-#     def __init__(self, input_size, hidden_size, num_layers, dropout=0.0):
-#         super(Autoencoder, self).__init__()
-#         self.encoder = Encoder(input_size, hidden_size, num_layers, dropout)
-#         self.decoder = Decoder(hidden_size, input_size, num_layers, dropout)
-#
-#     def forward(self, x):
-#         x, hidden, cell = self.encoder(x)
-#         decoded = self.decoder(hidden, cell, x.shape[1])
-#         return decoded
 
-def model_training(model,num_epochs,train_loader,test_dataset,no_noise_dataset,full_dataset,lr=0.0001,batch_size = 10):
+def model_training(model,num_epochs,train_loader,no_noise_dataset,full_dataset,lr=0.0001,batch_size = 10):
 
     # Define the loss function and optimizer
-    criterion = nn.MSELoss()
+    criterion = l2_loss2()
     optimizer = optim.Adam(model.parameters(), lr=lr)
     # Training loop
     print("#######start training######")
@@ -115,8 +77,9 @@ def model_training(model,num_epochs,train_loader,test_dataset,no_noise_dataset,f
             inputs = data
             optimizer.zero_grad()
             outputs = model(inputs)
+            mask = mask_matrix(inputs)
             # Given an input and a target, compute a gradient according to loss function.
-            loss = criterion(outputs, inputs)
+            loss = criterion(outputs, inputs,mask=mask)
             loss.backward()
             optimizer.step()
 
@@ -140,7 +103,7 @@ def model_training(model,num_epochs,train_loader,test_dataset,no_noise_dataset,f
 
 def data_prepare(simulated_dataset):
     """
-    logistic growth curve simulated data
+    logistic early growth traits data
     :return: tensor
     """
     def create_dataset(dfs):
@@ -166,26 +129,8 @@ def data_prepare(simulated_dataset):
     # (a,b,c) -> (c,a,b)
     dataset = torch.permute(dataset, (2, 1, 0))
 
-    return dataset
+    return dataset,seq_len,n_features
 
-def generate_dataset2():
-
-    # Generate random simulated plant trait data
-    np.random.seed(0)
-    num_plants = 418 #genotypes
-    num_days = 41 #time steps
-    num_features = 3 #traits
-
-    days = np.arange(num_days)
-    X = np.zeros((num_plants, num_days, num_features))
-    for i in range(num_plants):
-        for j in range(num_features):
-            X[i, :, j] = np.sin(
-                2 * np.pi * days / num_days + 2 * np.pi * j / num_features) + np.random.normal(
-                0, 0.1, num_days)
-    # Convert the numpy array to tensors
-    X_tensor = torch.tensor(X, dtype=torch.float32)
-    return X_tensor
 
 def normalization(dataset:torch.tensor)->torch.tensor:
 
@@ -213,11 +158,18 @@ def normalization(dataset:torch.tensor)->torch.tensor:
     # print("before permute")
     # print(timeseries_tensor.shape)
     dataset = torch.permute(timeseries_tensor, (1, 2, 0))  # (time step, number of sequences, inputsize(3))
-    #dataset = torch.permute(dataset, (2, 1, 0))
+
     # print("after normalize")
     # print(dataset.shape)
     return dataset,scaler
 
+def mask_matrix(input_data_with_missing_value:torch.tensor)->torch.tensor:
+    """Return a tensor represent the missing value in input tensor"""
+
+    tenosr_na = torch.isnan(input_data_with_missing_value)
+    mask_tensor = tenosr_na.logical_not()
+
+    return mask_tensor
 
 def count_parameters(model):
     print(model)
@@ -233,20 +185,41 @@ def count_parameters(model):
     print(f"Total Trainable Params: {total_params}")
     return total_params
 
+class l2_loss2(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self,outputs, targets, mask):
+
+        n = mask.sum()
+        diff = outputs - targets
+        masked_diff = mask * diff
+        masked_diff_sum = masked_diff.sum()
+        masked_diff_sum_squared = masked_diff_sum ** 2
+        masked_sum = mask.sum()
+        return masked_diff_sum_squared / masked_sum / n
+
 def main():
 
-    num_plants = 418 #genotypes
+    num_plants = 1200 #genotypes
     num_days = 41 #time steps
     num_features = 3 #traits
     #simulated dataset , save scaler to transform predicted value back
+    '''
     ## generate simulated  dataset
     simulated_dataset = return_simulated_dataset()
     X_tensor = data_prepare(simulated_dataset)
-    # #simulated dataset 2
-    # X_tensor = generate_dataset2()
-
+    '''
+    # use fillna LA_df
+    df_LA = pd.read_csv("../data/df_LA.csv",header=0,index_col=0)
+    df_height = pd.read_csv("../data/df_Height.csv",header=0,index_col=0)
+    df_biomass = pd.read_csv("../data/df_Biomass.csv",header=0,index_col=0)
+    dfs = [df_LA,df_height,df_biomass]
+    print(dfs)
+    X_tensor,num_days,num_features = data_prepare(dfs)
+    print(X_tensor,num_days,num_features)
     # Shuffle the dataset
-    indices = torch.randperm(num_plants*3)
+    indices = torch.randperm(num_plants)
     X_tensor = X_tensor[indices]
 
     # normalize whole dataset
@@ -261,15 +234,17 @@ def main():
 
     train_dataset,scaler_train = normalization(train_dataset)
     test_dataset, scaler_test = normalization(test_dataset)
-    # read no noise dataset:
-    no_noise_dfs = []
-    for trait in ["trait_1","trait_2","trait_3"]:
-        df = pd.read_csv("../data/simulated_data/{}_without_noise.csv"
-                         .format(trait),header=0,index_col=0)
-        no_noise_dfs.append(df)
-    no_noise_tensor = data_prepare(no_noise_dfs)
-    no_noise_datasets,no_noise_scaler = normalization(no_noise_tensor)
-    for lr in [1,0.1,0.01,0.001,0.0001]:
+
+    # # read no noise dataset:
+    # no_noise_dfs = []
+    # for trait in ["trait_1","trait_2","trait_3"]:
+    #     df = pd.read_csv("../data/simulated_data/{}_without_noise.csv"
+    #                      .format(trait),header=0,index_col=0)
+    #     no_noise_dfs.append(df)
+    # no_noise_tensor = data_prepare(no_noise_dfs)
+    # no_noise_datasets,no_noise_scaler = normalization(no_noise_tensor)
+    train_mask = mask_matrix(train_dataset)
+    for lr in [0.1,0.01,0.001,0.0001]:
         for batch_size in [1,10]:
             input_size = num_features
             hidden_size = 12
@@ -291,7 +266,7 @@ def main():
             # print(X_full_dataset.shape)
             # print(no_noise_datasets.shape)
             # print(test_dataset.shape)
-            test_prediction = model_training(model, num_epochs, train_dataloader, test_dataset,no_noise_datasets,X_full_dataset,batch_size=batch_size,lr=lr)
+            test_prediction = model_training(model, num_epochs, train_dataloader, test_dataset,X_full_dataset,X_full_dataset,batch_size=batch_size,lr=lr)
             # print("test prediction")
     # print(test_prediction.shape)
     test_prediction = torch.permute(test_prediction, (2, 0, 1))
