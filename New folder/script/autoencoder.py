@@ -136,6 +136,7 @@ def normalization(dataset:torch.tensor)->torch.tensor:
 
     # normalization
     # train the normalization
+    print(dataset.shape)
     from sklearn.preprocessing import StandardScaler
     scaler = StandardScaler()
     timeseries_tensor = []
@@ -157,10 +158,10 @@ def normalization(dataset:torch.tensor)->torch.tensor:
     timeseries_tensor = torch.stack(timeseries_tensor)
     # print("before permute")
     # print(timeseries_tensor.shape)
-    dataset = torch.permute(timeseries_tensor, (1, 2, 0))  # (time step, number of sequences, inputsize(3))
+    dataset = torch.permute(timeseries_tensor, (2, 1, 0))  # (time step, number of sequences, inputsize(3))
 
     # print("after normalize")
-    # print(dataset.shape)
+    print(dataset.shape)
     return dataset,scaler
 
 def mask_matrix(input_data_with_missing_value:torch.tensor)->torch.tensor:
