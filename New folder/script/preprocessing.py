@@ -3,6 +3,7 @@ This code is to preprocess the phenotype and genotype data
 
 save the dataframe using dill; csv file tooks more time and memory while reading
 """
+import copy
 import random
 import dill
 import pyreadr
@@ -314,24 +315,107 @@ def plot_raw_data(DH_platform_data):
 def missing_value_count(raw_df: str = "../data/image_DHline_data_after_average_based_on_day_log.csv"):
 
     df = pd.read_csv(raw_df,header=0,index_col=0)
+    days= list(set(df["DAS"].unique()))
+    print(days)
     na_count = df.isna().sum().sum()
     print(na_count)
     number_of_values = len(df.index)*3
+    # print the number of missing values
     print("values number: {}".format(number_of_values))
+    # print the proportion of missing values
     print("{}".format((na_count/number_of_values)))
 
+    # check if the number of missing vaules id randomly present in the whole dataset
+    ## based on Days after sowing
+    df_day_count = pd.DataFrame(index=days,columns=["count"])
+    group_object = df.groupby("DAS")
+    for item in group_object.groups:
 
-class Testreaction_class(unittest.TestCase):
+        group_df = group_object.get_group(item)
+        day=group_df["DAS"].unique()
+        print(day)
+        daily_na_count = group_df.isna().sum().sum()
+        df_day_count.loc[day,"count"] = daily_na_count
+    print(df_day_count)
+    plt.plot(df_day_count)
+    plt.show()
 
-    def test0_remove_no_effect_SNPs(self):
-        df = pd.read_csv("../data/data_geno_map.csv",header=0,index_col=0)
-        return_value = remove_no_effect_SNPs(df)
-        self.assertEqual(return_value, 0)
+    ## based on genotypes
+    genotypes= list(set(df["genotype_name"].unique()))
+    df_genotype_count = pd.DataFrame(index=genotypes, columns=["count"])
+    group_object = df.groupby("genotype_name")
+    for item in group_object.groups:
+        group_df = group_object.get_group(item)
+        geneotype = group_df["genotype_name"].unique()
+        #print(geneotype)
+        daily_na_count = group_df.isna().sum().sum()
+        df_genotype_count.loc[geneotype, "count"] = daily_na_count
+    print(df_day_count)
+    plt.plot(df_genotype_count)
+    plt.show()
 
-    def test1_na_count(self):
-        missing_value_count()
+    #check if missing value count is randomly distribute
+    import scipy.stats as stats
+    import pylab
+    x = df_genotype_count["count"].astype(float).to_numpy()
+
+    k2, p_value = stats.normaltest(x)
+    stats.probplot(x, dist="norm", plot=pylab)
+    pylab.show()
+    # tau, p_value = stats.kendalltau(["a","b","G","H"], [1,2,3,4])
+    print(k2,p_value)
+    x = df_day_count["count"].astype(float).to_numpy()
+
+    k2, p_value = stats.normaltest(x)
+    print(k2, p_value)
+
+def generate_a_test_set_by_duplicate_the_data_from_several_genotypes_and_add_noise(raw_data):
+
+    n=6
+    repetition = 3
+    genotype_list = raw_data["genotype_name"]
+    simulated_data = pd.DataFrame()
+    genotype_list = random.choices(genotype_list, k=n)
+    print(genotype_list)
+    for i in genotype_list:
+
+        select_df = raw_data.loc[raw_data["genotype_name"]==i]
+        #select_df = select_df.drop_duplicates(subset=["DAS","genotype_name"])
+        simulated_data = pd.concat([simulated_data, select_df],ignore_index=True)
+        print(simulated_data)
+        for j in range(repetition):
+
+            rep_select_df = copy.deepcopy(select_df)
+            height_noise = [random.random() for x in rep_select_df["Height_Estimated_log_transformed"]]
+            LA_noise = [random.random() for x in rep_select_df["LA_Estimated_log_transformed"]]
+            biomass_noise = [random.random() for x in rep_select_df["Biomass_Estimated_log_transformed"]]
+            #print(rep_select_df.columns)
+            #just to make sure assign differnt plantid
+            rep_select_df["plantid"] = rep_select_df["plantid"]+(2000*(j+1))
+            print(rep_select_df["plantid"])
+            rep_select_df["LA_Estimated_log_transformed"] = rep_select_df["LA_Estimated_log_transformed"] #+ LA_noise
+            rep_select_df["Height_Estimated_log_transformed"] = rep_select_df[
+                                                                "Height_Estimated_log_transformed"] #+ height_noise
+            rep_select_df["Biomass_Estimated_log_transformed"] = rep_select_df[
+                                                                "Biomass_Estimated_log_transformed"] #+ biomass_noise
+            simulated_data = pd.concat([simulated_data, rep_select_df],ignore_index=True)
+    else:
+        print(len(genotype_list),j)
+        print(simulated_data)
+        simulated_data.to_csv("../data/simulated_data_6_genotype_4_rep.csv")
+
+# class Testreaction_class(unittest.TestCase):
+#
+#     def test0_remove_no_effect_SNPs(self):
+#         df = pd.read_csv("../data/data_geno_map.csv",header=0,index_col=0)
+#         return_value = remove_no_effect_SNPs(df)
+#         self.assertEqual(return_value, 0)
+#
+#     def test1_na_count(self):
+#         missing_value_count()
+
 def main():
-    unittest.main()
+    #unittest.main()
 
     #read_rdata_to_csv()
     #data_manual_platform_DH = dill.load(open("../data/data_manual_platform_DH", "rb"))
@@ -343,7 +427,12 @@ def main():
     # chonsen_snps_mapdf = select_SNPs_based_on_distance(data_geno_map)
     # chonsen_snps_mapdf.to_csv("../data/chosen_snps_map.csv")
     #calculate_SNPs_relationship(snps_df=data_geno_genotype)
-    #data_DH_platform = dill.load(open("../data/image_DHline_data", "rb"))
+    data_DH_platform = dill.load(open("../data/image_DHline_data", "rb"))
+
+    data_DH_platform = pd.read_csv("../data/image_DHline_data_after_average_based_on_day_log.csv",header=0,index_col=0)
+    generate_a_test_set_by_duplicate_the_data_from_several_genotypes_and_add_noise(
+        data_DH_platform)
+
     # field_DH_data =dill.load(open("../data/field_DHline_data",'rb'))
     # gene_field = set(field_DH_data["InbredCode"].unique())
     # gene_platform = set(data_DH_platform["genotype_name"].unique())

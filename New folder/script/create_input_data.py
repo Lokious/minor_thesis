@@ -81,40 +81,39 @@ def data_prepare(simulated_dataset,label_df,snp):
     return tensor_dataset,tensor_lable
 
 def main():
+    # read file
+    snp_df = pd.read_csv("../data/chosen_snps_map.csv", header=0, index_col=0)
 
-    #read file
-    snp_df = pd.read_csv("../data/chosen_snps_map.csv",header=0,index_col=0)
     snp_list = list(snp_df.index)
     print(snp_list)
-    genotype_df = dill.load(open("../data/data_geno_genotype","rb"))
-    # replace 2 with 1 for further binary classification which fit for sigmoid()
-    # output
-    genotype_df = genotype_df.replace({2:1})
-    print(genotype_df)
-    selected_snp_df = merge_snp_with_genotype(snp_df,genotype_df)
+    genotype_df = dill.load(open("../data/data_geno_genotype", "rb"))
+    genotype_df = genotype_df.replace({2: 1})
+    selected_snp_df = merge_snp_with_genotype(snp_df, genotype_df)
+    # print(selected_snp_df)
+    drop_index = []
+    # print(len(selected_snp_df.columns))
+    for col in selected_snp_df.columns:
 
-    #read traits df without spatial correction
-    traits_df = pd.read_csv("../data/image_DHline_data_after_average_based_on_day.csv",header=0,index_col=0)
+        if len(selected_snp_df[col].unique()) == 1:
+            drop_index.append(col)
+            snp_list.remove(col)
+    selected_snp_df = selected_snp_df.drop(columns=drop_index)
+    # print(len(selected_snp_df.columns))
+    # read traits df without spatial correction
+    traits_df = pd.read_csv(
+        "../data/image_DHline_data_after_average_based_on_day.csv", header=0,
+        index_col=0)
 
     merge_traits_snps = merge_SNP_with_traits_df(traits_df, selected_snp_df)
 
-    #read reformat df
-    new_df_LA=pd.read_csv("../data/df_LA.csv",header=0,index_col=0)
-    new_df_Height=pd.read_csv("../data/df_Height.csv",header=0,index_col=0)
-    new_df_Biomass=pd.read_csv("../data/df_Biomass.csv",header=0,index_col=0)
-    Xs = [new_df_LA,new_df_Height,new_df_Biomass]
+    # read reformat df
+    new_df_LA = pd.read_csv("../data/df_LA.csv", header=0, index_col=0)
+    new_df_Height = pd.read_csv("../data/df_Height.csv", header=0, index_col=0)
+    new_df_Biomass = pd.read_csv("../data/df_Biomass.csv", header=0,
+                                 index_col=0)
+    Xs = [new_df_LA, new_df_Height, new_df_Biomass]
     for snp in snp_list:
-        data_prepare(Xs,merge_traits_snps,snp)
-
-
-
-
-
-
-
-
-
-
+        data_prepare(Xs, merge_traits_snps, snp)
 
 
 if __name__ == '__main__':

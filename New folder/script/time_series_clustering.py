@@ -1,3 +1,5 @@
+import copy
+
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
@@ -7,14 +9,15 @@ import os
 
 def read_and_reformat(file:str):
     platform_data = pd.read_csv(file,header=0,index_col=0)
+    print(platform_data)
     #platform_data = platform_data.fillna(0.0)
     # print(len(platform_data["genotype_name"].unique()))
     # print(platform_data)
     platform_data = platform_data[platform_data['genotype_name'].str.startswith('DH')]
-    platform_data.to_csv("../data/image_DHline_data_after_average_based_on_day.csv")
+    #platform_data.to_csv("../data/image_DHline_data_after_average_based_on_day.csv")
     groups_object = platform_data.groupby('plantid')
     group_number = len(groups_object.groups)
-    print("group_num{}".format(group_number))
+    print("group_num:{}".format(group_number))
     length = 0
     time_list = []
     plantid_list = []
@@ -40,6 +43,7 @@ def read_and_reformat(file:str):
     for i in time_list:
         for column in plantid_list:
             try:
+                #print(platform_data.loc[(column,i)])
                 new_df_LA.loc[i,column] = platform_data.loc[(column,i),"LA_Estimated_log_transformed"]
             except:
                 new_df_LA.loc[i, column] = np.nan
@@ -52,24 +56,28 @@ def read_and_reformat(file:str):
             except:
                 new_df_Biomass.loc[i, column] = np.nan
 
-    # print(new_df_LA)
-    # print(new_df_Height)
-    # print(new_df_Biomass)
+    print(new_df_LA)
+    print(new_df_Height)
+    print(new_df_Biomass)
     #use the average to fill in the NA
     #print(time_list)
+
     fillna(new_df_LA, time_list, plantid_list)
     fillna(new_df_Height,time_list,plantid_list)
     fillna(new_df_Biomass,time_list,plantid_list)
 
     #print(new_df_LA)
-    new_df_LA.to_csv("../data/df_LA.csv")
-    new_df_Height.to_csv("../data/df_Height.csv")
-    new_df_Biomass.to_csv("../data/df_Biomass.csv")
+    # new_df_LA.to_csv("../data/df_LA.csv")
+    # new_df_Height.to_csv("../data/df_Height.csv")
+    # new_df_Biomass.to_csv("../data/df_Biomass.csv")
     return new_df_LA,new_df_Height,new_df_Biomass
 
 def fillna(new_df, time_list, plantid_list):
+
     for i in range(len(time_list)):
+    #for i in [1]:
         for column in range(len(plantid_list)):
+        #for column in[0]:
             if pd.isna(new_df.iloc[i, column]):
                 try:
                     if i == 0:
@@ -100,7 +108,7 @@ def fillna(new_df, time_list, plantid_list):
                     # if there are two or more continues NA
                     move_step = 1
                     while (i + move_step < len(time_list) - 1):
-                        # print("step10")
+                        #print("step10")
                         move_step += 1
                         if not (pd.isna(new_df.iloc[i - 1, column]) or pd.isna(
                                 new_df.iloc[
@@ -135,34 +143,55 @@ def fillna(new_df, time_list, plantid_list):
                                 move_step += 1
                                 continue
                         else:
+                            print(i - move_step)
+                            print(time_list[i],plantid_list[column])
                             raise ValueError("something wrong")
             if pd.isna(new_df.iloc[i, column]):
                 print("NA did not be filled?")
                 print(i, column)
 
 
-def clusterinf(data_df,filename:str):
-
+def clusterinf(data_df,filename:str,centers):
+    plot_data= copy.deepcopy(data_df)
+    # plt.plot(plot_data)
+    # plt.show()
     #print(data_df)
     #data_df = data_df["Biomass_Estimated_log_transformed","Height_Estimated_log_transformed","LA_Estimated_log_transformed"]
     # 418 genotypes
 
-
+    '''
     model = KMeans(n_clusters=418,n_init=10)
     print(data_df.isna().values.any())
     y = model.fit_predict(data_df.T)
     y = pd.DataFrame(data=y,columns=["predict"],index=list(range(1,1201)))
     y.to_csv("clustering_result_kmean_{}.csv".format(filename))
+    '''
 
-    model = TimeSeriesKMeans(n_clusters=418, metric="dtw", max_iter=10)
-    model.fit(data_df.T)
-    y_ts = model.predict(data_df.T)
-    y_ts = pd.DataFrame(data=y_ts, columns=["predict"], index=list(range(1,1201)))
-    y_ts.to_csv("clustering_result_tslearn_{}.csv".format(filename))
+    # init=? If an ndarray is passed, it should be of shape (n_clusters, ts_size, d) and gives the initial centers.
+    initial_center =data_df[centers].T
+    initial_center = np.expand_dims(initial_center, axis=2)
+    print(initial_center.shape)
+    #print(initial_center)
 
+    input_data = np.expand_dims(data_df.T, axis=2)
+    model = TimeSeriesKMeans(n_clusters=6, metric="softdtw",max_iter=10,init=initial_center)
+
+    model.fit(input_data)
+    y_ts = model.predict(input_data)
+    y_ts = pd.DataFrame(data=y_ts, columns=["predict"], index=list(range(1,73)))
+    y_ts.to_csv("../data/clustering_result_tslearn_{}_simulated.csv".format(filename))
+
+    plt.plot(plot_data.T,label=y_ts.T)
+    plt.show()
 from sklearn.metrics import adjusted_rand_score, homogeneity_completeness_v_measure
 
-def evaluate_clustering(true_labels, predicted_labels):
+def evaluate_clustering(true_labels, predicted_labels,filename):
+    print(true_labels)
+    print(predicted_labels)
+    predict_df = pd.DataFrame()
+    predict_df["predict"] = list(predicted_labels)
+    predict_df["true_label"] = list(true_labels)
+    predict_df.to_csv("../data/clustering_result_tslearn_{}_simulated.csv".format(filename))
     ari = adjusted_rand_score(true_labels, predicted_labels)
     hcv = homogeneity_completeness_v_measure(true_labels, predicted_labels)
     homogeneity,completeness,v_measure = hcv
@@ -174,32 +203,45 @@ def evaluate_clustering(true_labels, predicted_labels):
 
 def print_clustering_result(true_label,trait="height"):
 
-    height_result_tslearn = pd.read_csv("../data/clustering_result_tslearn_{}.csv".format(trait),header=0,index_col=0)
-    height_result_kmean = pd.read_csv(
-        "../data/clustering_result_kmean_{}.csv".format(trait), header=0,
-        index_col=0)
+    height_result_tslearn = pd.read_csv("../data/clustering_result_tslearn_{}_simulated.csv".format(trait),header=0,index_col=0)
+    # height_result_kmean = pd.read_csv(
+    #     "../data/clustering_result_kmean_{}.csv".format(trait), header=0,
+    #     index_col=0)
 
     # print result
     print()
     print("time series clustering, dtw:{}".format(trait))
-    evaluate_clustering(true_label,height_result_tslearn["predict"])
-    print("kmean clustering:{}".format(trait))
-    evaluate_clustering(true_label, height_result_kmean["predict"])
+    evaluate_clustering(true_label,height_result_tslearn["predict"],trait)
+    # print("kmean clustering:{}".format(trait))
+    # evaluate_clustering(true_label, height_result_kmean["predict"])
 
 def main():
-    LA, Height, Biomass = read_and_reformat(file="../data/image_DHline_data_after_average_based_on_day.csv")
+    #LA, Height, Biomass = read_and_reformat(file="../data/image_DHline_data_after_average_based_on_day.csv")
+    LA, Height, Biomass = read_and_reformat(
+        file="../data/simulated_data_6_genotype_4_rep.csv")
     # # print("LA")
     # # print(LA)
-    # clusterinf(Height,"height")
-    # clusterinf(Biomass, "biomass")
-    # clusterinf(LA, "LA")
-    # df = pd.read_csv(
-    #     "../data/image_DHline_data_after_average_based_on_day.csv", header=0,
-    #     index_col=0)
-    # df1 = df[["plantid", "genotype_name"]].drop_duplicates(subset=["plantid"])
-    # true_label = df1['genotype_name'].astype('category').cat.codes
-    # print_clustering_result(true_label, trait="la")
-    # print_clustering_result(true_label,trait="height")
-    # print_clustering_result(true_label, trait="biomass")
+    df = pd.read_csv(
+        "../data/simulated_data_6_genotype_4_rep.csv", header=0,
+        index_col=0)
+    df1 = df[["plantid", "genotype_name"]].drop_duplicates(subset=["plantid"])
+    centers = df[["plantid", "genotype_name"]].drop_duplicates(subset=["genotype_name"])["plantid"]
+    # print(centers)
+
+    clusterinf(Height,"height",centers)
+    clusterinf(Biomass, "biomass",centers)
+    clusterinf(LA, "LA",centers)
+
+    true_label = df1['genotype_name'].astype('category').cat.codes
+    # plt.plot(Height, label=true_label)
+    # plt.show()
+    # plt.plot(Biomass, label=true_label)
+    # plt.show()
+    # plt.plot(LA, label=true_label)
+    # plt.show()
+    print_clustering_result(true_label, trait="la")
+    print_clustering_result(true_label,trait="height")
+    print_clustering_result(true_label, trait="biomass")
+
 if __name__ == '__main__':
     main()

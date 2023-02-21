@@ -107,8 +107,8 @@ def training(model, x, y, batch_size):
     num_sequences = x.shape[0]
     seq_length = x.shape[1]
     # Define training parameters
-    learning_rate = 0.0001
-    num_epochs = 200
+    learning_rate = 0.001
+    num_epochs = 100
 
     # Convert input and target data to PyTorch datasets
     dataset = TensorDataset(x, y)
@@ -158,9 +158,44 @@ def training(model, x, y, batch_size):
         # print('Epoch [%d], loss: %.3f' % (
         #     epoch + 1, running_loss / num_sequences))
     else:
-        file = open("output_bilstm.txt", "a")
-        file.write("training loss at last epoch: {}\n".format(
-            (running_loss / num_sequences)))
+        model.eval()  # Set the model to evaluation mode
+
+        with torch.no_grad():
+            x = torch.permute(x, (
+                1, 0, 2))
+            outputs = model(x.float())
+
+            predict_label = torch.round(outputs)
+
+            cm = confusion_matrix(y,predict_label)
+            try:
+                print(cm)
+                TN = cm[0, 0]
+                FP = cm[0, 1]
+                FN = cm[1, 0]
+                TP = cm[1, 1]
+                print("training result")
+                print("True Negatives: {}".format(TN))
+                print("False Positives: {}".format(FP))
+                print("False Negatives: {}".format(FN))
+                print("True Positives: {}".format(TP))
+
+                file = open("output_bilstm.txt", "a")
+                file.write("training loss at last epoch: {}\n".format(
+                    (running_loss / num_sequences)))
+                file.write("Training result:")
+                file.write("True Negatives: {}\n".format(TN))
+                file.write("False Positives: {}\n".format(FP))
+                file.write("False Negatives: {}\n".format(FN))
+                file.write("True Positives: {}\n".format(TP))
+                file.write("test loss: {}\n".format(loss))
+            except:
+                file = open("output_bilstm.txt", "a")
+                file.write("training loss at last epoch: {}\n".format(
+                    (running_loss / num_sequences)))
+                file.write("error")
+                file.write(" loss: {}\n".format(loss))
+
 
 
 def model_evaluation(model,x,y,snp):
@@ -180,40 +215,47 @@ def model_evaluation(model,x,y,snp):
         file = open("output_bilstm.txt", "a")
         file.write("--------------------------\n")
         file.write("test loss: {}\n".format(loss))
+        try:
 
-        #save confusion matrix
-        predict_label = torch.round(outputs)
-        cm = confusion_matrix(y,predict_label)
-        TN = cm[0, 0]
-        FP = cm[0, 1]
-        FN = cm[1, 0]
-        TP = cm[1, 1]
+            #save confusion matrix
+            predict_label = torch.round(outputs)
+            cm = confusion_matrix(y,predict_label)
+            print(cm)
+            TN = cm[0, 0]
+            FP = cm[0, 1]
+            FN = cm[1, 0]
+            TP = cm[1, 1]
 
-        print("True Negatives: {}".format(TN))
-        print("False Positives: {}".format(FP))
-        print("False Negatives: {}".format(FN))
-        print("True Positives: {}".format(TP))
-        file = open("output_bilstm.txt", "a")
-        file.write("True Negatives: {}\n".format(TN))
-        file.write("False Positives: {}\n".format(FP))
-        file.write("False Negatives: {}\n".format(FN))
-        file.write("True Positives: {}\n".format(TP))
-        file.write("test loss: {}\n".format(loss))
+            print("True Negatives: {}".format(TN))
+            print("False Positives: {}".format(FP))
+            print("False Negatives: {}".format(FN))
+            print("True Positives: {}".format(TP))
+            file = open("output_bilstm.txt", "a")
+            file.write("True Negatives: {}\n".format(TN))
+            file.write("False Positives: {}\n".format(FP))
+            file.write("False Negatives: {}\n".format(FN))
+            file.write("True Positives: {}\n".format(TP))
+            file.write("test loss: {}\n".format(loss))
 
-        classes = ['Negative', 'Positive']
-        plt.plot()
-        # Create the confusion matrix plot using seaborn
-        sns.heatmap(cm, annot=True, fmt='g', xticklabels=classes, yticklabels=classes)
+            classes = ['Negative', 'Positive']
+            plt.plot()
+            # Create the confusion matrix plot using seaborn
+            sns.heatmap(cm, annot=True, fmt='g', xticklabels=classes, yticklabels=classes)
 
-        # Set the axis labels and title
-        plt.xlabel('Predicted Label')
-        plt.ylabel('True Label')
-        plt.title('Confusion Matrix')
+            # Set the axis labels and title
+            plt.xlabel('Predicted Label')
+            plt.ylabel('True Label')
+            plt.title('Confusion Matrix')
 
-        # Save the plot as a PNG file
-        plt.savefig('{}_bilstm.png'.format(snp),dpi=300)
-        plt.clf()
-        return loss,TN,FP,TP,FN
+            # Save the plot as a PNG file
+            plt.savefig('{}_bilstm.png'.format(snp),dpi=300)
+            plt.clf()
+            return loss,TN,FP,TP,FN
+        except:
+            file = open("output_bilstm.txt", "a")
+            file.write("error")
+            file.write("test loss: {}\n".format(loss))
+            return loss, "NA", "NA", "NA", "NA"
 
 def main():
 
@@ -221,12 +263,14 @@ def main():
     snp_df = pd.read_csv("../data/chosen_snps_map.csv", header=0, index_col=0)
     snp_list = list(snp_df.index)
     input_x = dill.load(open("../data/input_data/input_X","rb"))
+    from autoencoder import normalization
+    input_x,scaler = normalization(input_x)
     test_result = {}
-    for snp in ["AX-91411604"]:
+    for snp in snp_list:
 
         # x:(time step, number of sequences, inputsize(3))
         # y: (number of sequences, class_number)
-        with open("output.txt", "a") as f:
+        with open("output_bilstm.txt", "a") as f:
             f.write("#####{}#######\n".format(snp))
         input_y = dill.load(open("../data/input_data/input_Y_{}".format(snp),"rb"))
         # print(input_x.shape)
@@ -242,7 +286,7 @@ def main():
         training(model, x=x_train, y=y_train, batch_size=10)
 
         # model evaluation
-        print(y_test)
+        #print(y_test)
         loss,TN,FP,TP,FN = model_evaluation(model,x_test,y_test,snp)
         test_result[snp]= [loss,TN,FP,TP,FN]
     else:
