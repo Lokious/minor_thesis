@@ -138,7 +138,6 @@ LA_coefDat <- LA_spline_lines$coefDat
 Height_predDat <- Height_spline_lines$predDat
 Height_coefDat <- Height_spline_lines$coefDat
 
-
 LA_serieOut <- detectSerieOut(corrDat = corrected_LA_spline,
                                     predDat = LA_predDat,
                                     coefDat = LA_coefDat,
@@ -158,3 +157,38 @@ Height_serieOut <- detectSerieOut(corrDat = corrected_Height_spline,
                                     thrPca = 90,
                                     thrSlope = 0.60)
 
+plot(LA_serieOut, genotypes = "DH_KE0002")
+# remove the outlier series
+LA_remove_series_out <- removeSerieOut(dat = corrected_LA_spline,
+               serieOut = LA_serieOut)
+Height_remove_series_out <- removeSerieOut(dat = corrected_Height_spline,
+                                       serieOut = Height_serieOut)
+
+# Fitting splines: knot larger-> more smooth, (knot=30 Warning: No convergence after 250 iterations) 
+# Warning: More than 5 plotIds have observations for less than the minimum number of time points, which is 10. 
+# The  first 5 are printed, to see them all run attr(..., 'plotLimObs') on the output 01_13, 01_29, 01_40, 01_41, 01_44
+LA_spline_lines_after_remove_outlier_series <- fitSpline(inDat = LA_remove_series_out,
+                             trait = "LA_Estimated_corr",
+                             genotypes = unique(as.character(LA_remove_series_out$genotype)),
+                             knots = 20,
+                             minNoTP = 10)
+
+plot(LA_spline_lines,genotypes = "DH_KE0006" )
+
+Height_spline_lines_after_remove_outlier_series <- fitSpline(inDat = Height_remove_series_out,
+                                 trait = "Height_Estimated_corr",
+                                 genotypes = unique(as.character(Height_remove_series_out$genotype)),
+                                 knots = 20,
+                                 minNoTP = 10)
+# extract some features and predicted values use for following prediction.
+Height_predict <- na.omit(Height_spline_lines_after_remove_outlier_series$predDat)
+Height_coefient<- na.omit(Height_spline_lines_after_remove_outlier_series$coefDat)
+
+LA_predict <- na.omit(LA_spline_lines_after_remove_outlier_series$predDat)
+LA_coefient <- na.omit(LA_spline_lines_after_remove_outlier_series$coefDat)
+
+# droplevels(): remove unused levels from a factor variabl
+write.csv(Height_predict,"../data/height_predict_withp_spline.csv")
+write.csv(Height_coefient,"../data/height_coeficient_withp_spline.csv")
+write.csv(LA_predict,"../data/LA_predict_withp_spline.csv")
+write.csv(LA_coefient,"../data/LA_coeficient_withp_spline.csv")
