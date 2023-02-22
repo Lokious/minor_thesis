@@ -3,16 +3,17 @@ import copy
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
+import seaborn as sns
 from tslearn.clustering import TimeSeriesKMeans
 from sklearn.cluster import KMeans
 import os
 
 def read_and_reformat(file:str):
     platform_data = pd.read_csv(file,header=0,index_col=0)
-    print(platform_data)
+
     #platform_data = platform_data.fillna(0.0)
     # print(len(platform_data["genotype_name"].unique()))
-    # print(platform_data)
+
     platform_data = platform_data[platform_data['genotype_name'].str.startswith('DH')]
     #platform_data.to_csv("../data/image_DHline_data_after_average_based_on_day.csv")
     groups_object = platform_data.groupby('plantid')
@@ -22,8 +23,10 @@ def read_and_reformat(file:str):
     time_list = []
     plantid_list = []
     for item in groups_object.groups:
+
         # group based on plant, every plant related to one line
         plant_df = groups_object.get_group(item)
+
         plant_df.set_index("DAS",inplace=True)
         #print(plant_df)
         time_length = len(plant_df.index)
@@ -35,6 +38,7 @@ def read_and_reformat(file:str):
         #time_series_df_list.append(plant_df)
         plantid_list.append(plant_df["plantid"].unique()[0])
     #print(length)
+
     new_df_LA = pd.DataFrame(index=time_list,columns=plantid_list)
     new_df_Height = pd.DataFrame(index=time_list, columns=plantid_list)
     new_df_Biomass = pd.DataFrame(index=time_list, columns=plantid_list)
@@ -56,9 +60,9 @@ def read_and_reformat(file:str):
             except:
                 new_df_Biomass.loc[i, column] = np.nan
 
-    print(new_df_LA)
-    print(new_df_Height)
-    print(new_df_Biomass)
+    # print(new_df_LA)
+    # print(new_df_Height)
+    # print(new_df_Biomass)
     #use the average to fill in the NA
     #print(time_list)
 
@@ -152,7 +156,7 @@ def fillna(new_df, time_list, plantid_list):
 
 
 def clusterinf(data_df,filename:str,centers):
-    plot_data= copy.deepcopy(data_df)
+    plot_data= copy.deepcopy(data_df).T
     # plt.plot(plot_data)
     # plt.show()
     #print(data_df)
@@ -168,30 +172,29 @@ def clusterinf(data_df,filename:str,centers):
     '''
 
     # init=? If an ndarray is passed, it should be of shape (n_clusters, ts_size, d) and gives the initial centers.
+
     initial_center =data_df[centers].T
     initial_center = np.expand_dims(initial_center, axis=2)
     print(initial_center.shape)
     #print(initial_center)
 
     input_data = np.expand_dims(data_df.T, axis=2)
-    model = TimeSeriesKMeans(n_clusters=6, metric="softdtw",max_iter=10,init=initial_center)
+    model = TimeSeriesKMeans(n_clusters=3, metric="softdtw",max_iter=10,init=initial_center)
 
     model.fit(input_data)
     y_ts = model.predict(input_data)
-    y_ts = pd.DataFrame(data=y_ts, columns=["predict"], index=list(range(1,73)))
-    y_ts.to_csv("../data/clustering_result_tslearn_{}_simulated.csv".format(filename))
-
-    plt.plot(plot_data.T,label=y_ts.T)
-    plt.show()
+    y_ts = pd.DataFrame(data=y_ts, columns=["predict"], index=list(range(1,33)))
+    y_ts["plantid"] = plot_data.index
+    y_ts.to_csv("../data/clustering_result_tslearn_{}_simulated_nonoise.csv".format(filename))
+    return y_ts
 from sklearn.metrics import adjusted_rand_score, homogeneity_completeness_v_measure
 
 def evaluate_clustering(true_labels, predicted_labels,filename):
-    print(true_labels)
-    print(predicted_labels)
+
     predict_df = pd.DataFrame()
     predict_df["predict"] = list(predicted_labels)
     predict_df["true_label"] = list(true_labels)
-    predict_df.to_csv("../data/clustering_result_tslearn_{}_simulated.csv".format(filename))
+    predict_df.to_csv("../data/clustering_result_tslearn_{}_simulated_nonoise.csv".format(filename))
     ari = adjusted_rand_score(true_labels, predicted_labels)
     hcv = homogeneity_completeness_v_measure(true_labels, predicted_labels)
     homogeneity,completeness,v_measure = hcv
@@ -201,47 +204,60 @@ def evaluate_clustering(true_labels, predicted_labels,filename):
     print("v_measure: {:3f}".format(v_measure))
     return ari, hcv
 
-def print_clustering_result(true_label,trait="height"):
+def print_clustering_result(input_df,centers,true_label, trait:str):
 
-    height_result_tslearn = pd.read_csv("../data/clustering_result_tslearn_{}_simulated.csv".format(trait),header=0,index_col=0)
+
+    predict_label = clusterinf(input_df, "la", centers)
+    df = pd.read_csv(
+        "../data/simulated_data_6_genotype_4_rep_nonoise.csv", header=0,
+        index_col=0)
+    result_df = df.merge(predict_label, on="plantid")
+    print(result_df)
+    #colored based on predicted label
+
+
+    result_df.to_csv("../data/clustering_result_tslearn_{}_simulate_nonoise.csv".format(trait))
+    predict_plot = sns.lineplot(data=result_df, x="DAS", y="{}_Estimated_log_transformed".format(trait),
+                 units="plantid",hue="predict",estimator=None,palette=['r','g','b'])
+    predict_plot.figure.savefig("{}_predict_cluster_nonoise.png".format(trait))
+    plt.show()
+    # colored based on genotype
+    genotype_plot = sns.lineplot(data=result_df, x="DAS", y="{}_Estimated_log_transformed".format(trait),
+                 units="plantid",hue="genotype_name",estimator=None,palette=['r','g','b'])
+    genotype_plot.figure.savefig("{}_genotype_cluster_nonoise.png".format(trait))
+    plt.show()
+
     # height_result_kmean = pd.read_csv(
     #     "../data/clustering_result_kmean_{}.csv".format(trait), header=0,
     #     index_col=0)
 
     # print result
-    print()
+
     print("time series clustering, dtw:{}".format(trait))
-    evaluate_clustering(true_label,height_result_tslearn["predict"],trait)
+    evaluate_clustering(true_label, predict_label["predict"], trait)
     # print("kmean clustering:{}".format(trait))
     # evaluate_clustering(true_label, height_result_kmean["predict"])
 
 def main():
     #LA, Height, Biomass = read_and_reformat(file="../data/image_DHline_data_after_average_based_on_day.csv")
     LA, Height, Biomass = read_and_reformat(
-        file="../data/simulated_data_6_genotype_4_rep.csv")
-    # # print("LA")
+        file="../data/simulated_data_6_genotype_4_rep_nonoise.csv")
+
     # # print(LA)
     df = pd.read_csv(
-        "../data/simulated_data_6_genotype_4_rep.csv", header=0,
+        "../data/simulated_data_6_genotype_4_rep_nonoise.csv", header=0,
         index_col=0)
+
     df1 = df[["plantid", "genotype_name"]].drop_duplicates(subset=["plantid"])
     centers = df[["plantid", "genotype_name"]].drop_duplicates(subset=["genotype_name"])["plantid"]
-    # print(centers)
+    print("center")
+    print(centers)
+    true_label = df1['genotype_name']
 
-    clusterinf(Height,"height",centers)
-    clusterinf(Biomass, "biomass",centers)
-    clusterinf(LA, "LA",centers)
-
-    true_label = df1['genotype_name'].astype('category').cat.codes
-    # plt.plot(Height, label=true_label)
-    # plt.show()
-    # plt.plot(Biomass, label=true_label)
-    # plt.show()
-    # plt.plot(LA, label=true_label)
-    # plt.show()
-    print_clustering_result(true_label, trait="la")
-    print_clustering_result(true_label,trait="height")
-    print_clustering_result(true_label, trait="biomass")
+    # clustering and show result
+    print_clustering_result(LA,centers=centers,true_label=true_label, trait="LA",)
+    print_clustering_result(Height,centers=centers,true_label=true_label,trait="Height")
+    print_clustering_result(Biomass,centers=centers,true_label=true_label,trait="Biomass")
 
 if __name__ == '__main__':
     main()

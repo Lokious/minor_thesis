@@ -371,7 +371,7 @@ def missing_value_count(raw_df: str = "../data/image_DHline_data_after_average_b
 
 def generate_a_test_set_by_duplicate_the_data_from_several_genotypes_and_add_noise(raw_data):
 
-    n=6
+    n=3
     repetition = 3
     genotype_list = raw_data["genotype_name"]
     simulated_data = pd.DataFrame()
@@ -386,23 +386,37 @@ def generate_a_test_set_by_duplicate_the_data_from_several_genotypes_and_add_noi
         for j in range(repetition):
 
             rep_select_df = copy.deepcopy(select_df)
-            height_noise = [random.random() for x in rep_select_df["Height_Estimated_log_transformed"]]
-            LA_noise = [random.random() for x in rep_select_df["LA_Estimated_log_transformed"]]
-            biomass_noise = [random.random() for x in rep_select_df["Biomass_Estimated_log_transformed"]]
+
             #print(rep_select_df.columns)
             #just to make sure assign differnt plantid
             rep_select_df["plantid"] = rep_select_df["plantid"]+(2000*(j+1))
             print(rep_select_df["plantid"])
-            rep_select_df["LA_Estimated_log_transformed"] = rep_select_df["LA_Estimated_log_transformed"] #+ LA_noise
+
+            # #shift at time point
+            # shift_days = random.randint(0,6)
+            # rep_select_df["DAS"]= rep_select_df["DAS"]+shift_days
+            #add noise
+            # height_noise = [random.random() for x in
+            #                 rep_select_df["Height_Estimated_log_transformed"]]
+            # LA_noise = [random.random() for x in
+            #             rep_select_df["LA_Estimated_log_transformed"]]
+            # biomass_noise = [random.random() for x in rep_select_df[
+            #     "Biomass_Estimated_log_transformed"]]
+            height_noise=0
+            LA_noise = 0
+            biomass_noise=0
+            rep_select_df["LA_Estimated_log_transformed"] = rep_select_df["LA_Estimated_log_transformed"] + LA_noise
             rep_select_df["Height_Estimated_log_transformed"] = rep_select_df[
-                                                                "Height_Estimated_log_transformed"] #+ height_noise
+                                                                "Height_Estimated_log_transformed"] + height_noise
             rep_select_df["Biomass_Estimated_log_transformed"] = rep_select_df[
-                                                                "Biomass_Estimated_log_transformed"] #+ biomass_noise
+                                                                "Biomass_Estimated_log_transformed"] + biomass_noise
             simulated_data = pd.concat([simulated_data, rep_select_df],ignore_index=True)
     else:
         print(len(genotype_list),j)
         print(simulated_data)
-        simulated_data.to_csv("../data/simulated_data_6_genotype_4_rep.csv")
+        #simulated_data.to_csv("../data/simulated_data_6_genotype_4_rep_shift_based_on_das.csv")
+        #add noise data
+        simulated_data.to_csv("../data/simulated_data_6_genotype_4_rep_nonoise.csv")
 
 # class Testreaction_class(unittest.TestCase):
 #
