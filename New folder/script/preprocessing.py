@@ -15,6 +15,8 @@ import seaborn as sns
 from scipy.stats import chi2_contingency
 import math
 import unittest
+
+import glob
 def read_rdata_to_csv():
 
 
@@ -418,6 +420,68 @@ def generate_a_test_set_by_duplicate_the_data_from_several_genotypes_and_add_noi
         #add noise data
         simulated_data.to_csv("../data/simulated_data_6_genotype_4_rep_nonoise.csv")
 
+def pre_process_for_spline_extract_features(file):
+
+    platform_data = pd.read_csv(file,header=0,index_col=0)
+
+    print(platform_data)
+    #take one value per day
+    platform_data = platform_data[platform_data["timePoint"].str.endswith("00:00:00")]
+    platform_data["timePoint"] = platform_data["timePoint"].apply(lambda x: pd.Series(str(x).split(" ")[0]))
+    print(platform_data)
+    #platform_data = platform_data.fillna(0.0)
+    # print(len(platform_data["genotype_name"].unique()))
+
+    platform_data = platform_data[platform_data['genotype'].str.startswith('DH')]
+    #platform_data.to_csv("../data/image_DHline_data_after_average_based_on_day.csv")
+    groups_object = platform_data.groupby('plotId')
+    group_number = len(groups_object.groups)
+    print("group_num:{}".format(group_number))
+    length = 0
+    time_list = []
+    plantid_list = []
+    for item in groups_object.groups:
+
+        # group based on plant, every plant related to one line
+        plant_df = groups_object.get_group(item)
+
+        plant_df.set_index("timePoint",inplace=True)
+        #print(plant_df)
+        time_length = len(plant_df.index)
+
+        if time_length > length:
+            length = time_length
+            time_list = list(plant_df.index)
+            #print("time steps:{}".format(time_length))
+        #time_series_df_list.append(plant_df)
+        plantid_list.append(plant_df["plotId"].unique()[0])
+    #print(length)
+
+    new_df_predict = pd.DataFrame(index=time_list,columns=plantid_list)
+    new_df_deriv = pd.DataFrame(index=time_list, columns=plantid_list)
+    new_df_deriv2 = pd.DataFrame(index=time_list, columns=plantid_list)
+    platform_data.set_index(['plotId','timePoint'],inplace=True)
+    for i in time_list:
+        for column in plantid_list:
+            try:
+                #print(platform_data.loc[(column,i)])
+                new_df_predict.loc[i,column] = platform_data.loc[(column,i),"pred.value"]
+            except:
+                new_df_predict.loc[i, column] = np.nan
+            try:
+                #print(platform_data.loc[(column,i)])
+                new_df_deriv.loc[i,column] = platform_data.loc[(column,i),"deriv"]
+            except:
+                new_df_deriv.loc[i, column] = np.nan
+            try:
+                #print(platform_data.loc[(column,i)])
+                new_df_deriv2.loc[i,column] = platform_data.loc[(column,i),"deriv2"]
+            except:
+                new_df_deriv2.loc[i, column] = np.nan
+
+
+    print(new_df_predict)
+    return new_df_predict,new_df_deriv,new_df_deriv2
 # class Testreaction_class(unittest.TestCase):
 #
 #     def test0_remove_no_effect_SNPs(self):
@@ -430,6 +494,22 @@ def generate_a_test_set_by_duplicate_the_data_from_several_genotypes_and_add_noi
 
 def main():
     #unittest.main()
+    height_file = "../data/spline_extract_features/height_predict_withp_spline.csv"
+    height_predict,height_deriv,height_deriv2 = pre_process_for_spline_extract_features(height_file)
+    height_predict.to_csv("../data/spline_extract_features/height_predict_reformat.csv")
+    height_deriv.to_csv(
+        "../data/spline_extract_features/height_deriv_reformat.csv")
+    height_deriv2.to_csv(
+        "../data/spline_extract_features/height_deriv2_reformat.csv")
+
+    la_file = "../data/spline_extract_features/LA_predict_withp_spline.csv"
+    la_predict,la_deriv,la_deriv2 = pre_process_for_spline_extract_features(la_file)
+    la_predict.to_csv("../data/spline_extract_features/la_predict_reformat.csv")
+    la_deriv.to_csv(
+        "../data/spline_extract_features/la_deriv_reformat.csv")
+    la_deriv2.to_csv(
+        "../data/spline_extract_features/la_deriv2_reformat.csv")
+
 
     #read_rdata_to_csv()
     #data_manual_platform_DH = dill.load(open("../data/data_manual_platform_DH", "rb"))
@@ -441,11 +521,11 @@ def main():
     # chonsen_snps_mapdf = select_SNPs_based_on_distance(data_geno_map)
     # chonsen_snps_mapdf.to_csv("../data/chosen_snps_map.csv")
     #calculate_SNPs_relationship(snps_df=data_geno_genotype)
-    data_DH_platform = dill.load(open("../data/image_DHline_data", "rb"))
-
-    data_DH_platform = pd.read_csv("../data/image_DHline_data_after_average_based_on_day_log.csv",header=0,index_col=0)
-    generate_a_test_set_by_duplicate_the_data_from_several_genotypes_and_add_noise(
-        data_DH_platform)
+    # data_DH_platform = dill.load(open("../data/image_DHline_data", "rb"))
+    #
+    # data_DH_platform = pd.read_csv("../data/image_DHline_data_after_average_based_on_day_log.csv",header=0,index_col=0)
+    # generate_a_test_set_by_duplicate_the_data_from_several_genotypes_and_add_noise(
+    #     data_DH_platform)
 
     # field_DH_data =dill.load(open("../data/field_DHline_data",'rb'))
     # gene_field = set(field_DH_data["InbredCode"].unique())
