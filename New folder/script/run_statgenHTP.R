@@ -187,8 +187,73 @@ Height_coefient<- na.omit(Height_spline_lines_after_remove_outlier_series$coefDa
 LA_predict <- na.omit(LA_spline_lines_after_remove_outlier_series$predDat)
 LA_coefient <- na.omit(LA_spline_lines_after_remove_outlier_series$coefDat)
 
-# droplevels(): remove unused levels from a factor variabl
-write.csv(Height_predict,"../data/height_predict_withp_spline.csv")
-write.csv(Height_coefient,"../data/height_coeficient_withp_spline.csv")
-write.csv(LA_predict,"../data/LA_predict_withp_spline.csv")
-write.csv(LA_coefient,"../data/LA_coeficient_withp_spline.csv")
+# extract AUC based on days
+LA.AUC <- estimateSplineParameters(x = LA_spline_lines_after_remove_outlier_series,
+                                   estimate = "predictions",
+                                   what = "AUC",
+                                   AUCScale = "days"
+                             )
+
+Height.AUC <- estimateSplineParameters(x = Height_spline_lines_after_remove_outlier_series,
+                                       estimate = "predictions",
+                                       what = "AUC",
+                                       AUCScale = "days"
+                                       )
+
+LA.maxDeriv <- estimateSplineParameters(x = LA_spline_lines_after_remove_outlier_series,
+                                        estimate = "derivatives",
+                                        what = "max",
+                                      )
+
+Height.maxDeriv <- estimateSplineParameters(x = Height_spline_lines_after_remove_outlier_series,
+                                            estimate = "derivatives",
+                                            what = "max",
+                                      )
+
+LA.maxPred <- estimateSplineParameters(x = LA_spline_lines_after_remove_outlier_series,
+                                       estimate = "predictions",
+                                       what = "max",
+                                       )
+
+Height.maxPred <- estimateSplineParameters(x = Height_spline_lines_after_remove_outlier_series,
+                                           estimate = "predictions",
+                                           what = "max",
+                                          )
+
+LA.meanDeriv <- estimateSplineParameters(x = LA_spline_lines_after_remove_outlier_series,
+                                         estimate = "derivatives",
+                                         what = "mean",
+                                        )
+
+Height.meanDeriv <- estimateSplineParameters(x = Height_spline_lines_after_remove_outlier_series,
+                                             estimate = "derivatives",
+                                             what = "mean",
+                                         )
+
+LA_AUC <- droplevels(na.omit(LA.AUC))
+Height_AUC <- droplevels(na.omit(Height.AUC))
+
+LA_maxDeriv <- droplevels(na.omit(LA.maxDeriv))
+Height_maxDeriv <- droplevels(na.omit(Height.maxDeriv))
+
+LA_maxPred <- droplevels(na.omit(LA.maxPred))
+Height_maxPred <- droplevels(na.omit(Height.maxPred))
+
+LA_meanDeriv <- droplevels(na.omit(LA.meanDeriv))
+Height_meanDeriv <- droplevels(na.omit(Height.meanDeriv))
+
+#merge data for LA and Height
+library(tidyverse)
+## put all data frames into list
+LA_df_list <- list(LA_coefient, LA_predDat, LA_AUC,LA_maxDeriv,LA_maxPred,LA_meanDeriv)      
+Height_df_list <- list(Height_coefient, Height_predDat, Height_AUC,Height_maxDeriv,Height_maxPred,Height_meanDeriv)      
+
+#merge all data frames together
+Reduce(function(x, y) merge(x, y, all=FALSE), list_df)
+LA_df_list %>% reduce(full_join_LA, by='plotid')
+Height_df_list %>% reduce(full_join_Height, by=c('plotid'))
+
+# droplevels(): remove unused levels from a factor variable
+write.csv(full_join_LA,"../data/LA_features_from_spline.csv")
+write.csv(full_join_Height,"../data/Height_features_from_spline.csv")
+

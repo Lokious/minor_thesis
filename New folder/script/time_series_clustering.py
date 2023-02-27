@@ -179,13 +179,13 @@ def clusterinf(data_df,filename:str,centers):
     #print(initial_center)
 
     input_data = np.expand_dims(data_df.T, axis=2)
-    model = TimeSeriesKMeans(n_clusters=3, metric="softdtw",max_iter=10,init=initial_center)
+    model = TimeSeriesKMeans(n_clusters=3, metric="dtw",max_iter=10,init=initial_center)
 
     model.fit(input_data)
     y_ts = model.predict(input_data)
     y_ts = pd.DataFrame(data=y_ts, columns=["predict"], index=list(range(1,33)))
     y_ts["plantid"] = plot_data.index
-    y_ts.to_csv("../data/clustering_result_tslearn_{}_simulated_nonoise.csv".format(filename))
+    y_ts.to_csv("../data/clustering_result_tslearn_{}_simulated_shift.csv".format(filename))
     return y_ts
 from sklearn.metrics import adjusted_rand_score, homogeneity_completeness_v_measure
 
@@ -194,7 +194,7 @@ def evaluate_clustering(true_labels, predicted_labels,filename):
     predict_df = pd.DataFrame()
     predict_df["predict"] = list(predicted_labels)
     predict_df["true_label"] = list(true_labels)
-    predict_df.to_csv("../data/clustering_result_tslearn_{}_simulated_nonoise.csv".format(filename))
+    predict_df.to_csv("../data/clustering_result_tslearn_{}_simulated_shift.csv".format(filename))
     ari = adjusted_rand_score(true_labels, predicted_labels)
     hcv = homogeneity_completeness_v_measure(true_labels, predicted_labels)
     homogeneity,completeness,v_measure = hcv
@@ -209,22 +209,22 @@ def print_clustering_result(input_df,centers,true_label, trait:str):
 
     predict_label = clusterinf(input_df, "la", centers)
     df = pd.read_csv(
-        "../data/simulated_data_6_genotype_4_rep_nonoise.csv", header=0,
+        "../data/simulated_data_6_genotype_4_rep_shift_based_on_das.csv", header=0,
         index_col=0)
     result_df = df.merge(predict_label, on="plantid")
     print(result_df)
     #colored based on predicted label
 
 
-    result_df.to_csv("../data/clustering_result_tslearn_{}_simulate_nonoise.csv".format(trait))
+    result_df.to_csv("../data/clustering_result_tslearn_{}_simulate_shift.csv".format(trait))
     predict_plot = sns.lineplot(data=result_df, x="DAS", y="{}_Estimated_log_transformed".format(trait),
                  units="plantid",hue="predict",estimator=None,palette=['r','g','b'])
-    predict_plot.figure.savefig("{}_predict_cluster_nonoise.png".format(trait))
+    predict_plot.figure.savefig("{}_predict_cluster_shift.png".format(trait))
     plt.show()
     # colored based on genotype
     genotype_plot = sns.lineplot(data=result_df, x="DAS", y="{}_Estimated_log_transformed".format(trait),
                  units="plantid",hue="genotype_name",estimator=None,palette=['r','g','b'])
-    genotype_plot.figure.savefig("{}_genotype_cluster_nonoise.png".format(trait))
+    genotype_plot.figure.savefig("{}_genotype_cluster_shift.png".format(trait))
     plt.show()
 
     # height_result_kmean = pd.read_csv(
@@ -241,11 +241,11 @@ def print_clustering_result(input_df,centers,true_label, trait:str):
 def main():
     #LA, Height, Biomass = read_and_reformat(file="../data/image_DHline_data_after_average_based_on_day.csv")
     LA, Height, Biomass = read_and_reformat(
-        file="../data/simulated_data_6_genotype_4_rep_nonoise.csv")
+        file="../data/simulated_data_6_genotype_4_rep_shift_based_on_das.csv")
 
     # # print(LA)
     df = pd.read_csv(
-        "../data/simulated_data_6_genotype_4_rep_nonoise.csv", header=0,
+        "../data/simulated_data_6_genotype_4_rep_shift_based_on_das.csv", header=0,
         index_col=0)
 
     df1 = df[["plantid", "genotype_name"]].drop_duplicates(subset=["plantid"])
