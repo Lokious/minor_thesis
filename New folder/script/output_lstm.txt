@@ -510,3 +510,17 @@ False Negatives: 121
 True Positives: 0
 test loss: 0.6925371885299683
 #####AX-91457211#######
+training loss at last epoch: 2.9981473124065956
+Training result:True Negatives: 46
+False Positives: 253
+False Negatives: 44
+True Positives: 273
+test loss: 0.6648849844932556
+--------------------------
+test loss: 0.6978210210800171
+True Negatives: 15
+False Positives: 126
+False Negatives: 17
+True Positives: 106
+test loss: 0.6978210210800171
+#####AX-90655890#######
