@@ -127,14 +127,14 @@ corrected_Height_spline <- getCorrected(Height_spline_model)
 
 # Fitting splines: knot larger-> more smooth, (knot=30 Warning: No convergence after 250 iterations) 
 LA_spline_lines <- fitSpline(inDat = corrected_LA_spline,
-                             trait = "LA_Estimated_corr",
+                             trait = "LA_Estimated_log_transformed_corr",
                              genotypes = unique(as.character(corrected_LA_spline$genotype)),
                              knots = 20,
                              minNoTP = 10
                              )
 
 Height_spline_lines <- fitSpline(inDat = corrected_Height_spline,
-                                 trait = "Height_Estimated_corr",
+                                 trait = "Height_Estimated_log_transformed_corr",
                                  genotypes = unique(as.character(corrected_Height_spline$genotype)),
                                  knots = 20,
                                  minNoTP = 10)
@@ -152,7 +152,7 @@ Height_coefDat <- Height_spline_lines$coefDat
 LA_serieOut <- detectSerieOut(corrDat = corrected_LA_spline,
                                     predDat = LA_predDat,
                                     coefDat = LA_coefDat,
-                                    trait = "LA_Estimated_corr",
+                                    trait = "LA_Estimated_log_transformed_corr",
                                     genotypes = unique(as.character(corrected_LA_spline$genotype)),
                                     thrCor = 0.60,
                                     thrPca = 90,
@@ -162,7 +162,7 @@ LA_serieOut <- detectSerieOut(corrDat = corrected_LA_spline,
 Height_serieOut <- detectSerieOut(corrDat = corrected_Height_spline,
                                     predDat = Height_predDat,
                                     coefDat = Height_coefDat,
-                                    trait = "Height_Estimated_corr",
+                                    trait = "Height_Estimated_log_transformed_corr",
                                     genotypes = unique(as.character(corrected_Height_spline$genotype)),
                                     thrCor = 0.60,
                                     thrPca = 90,
@@ -179,7 +179,7 @@ Height_remove_series_out <- removeSerieOut(dat = corrected_Height_spline,
 # Warning: More than 5 plotIds have observations for less than the minimum number of time points, which is 10. 
 # The first 5 are printed, to see them all run attr(..., 'plotLimObs') on the output 01_13, 01_29, 01_40, 01_41, 01_44
 LA_spline_lines_after_remove_outlier_series <- fitSpline(inDat = LA_remove_series_out,
-                             trait = "LA_Estimated_corr",
+                             trait = "LA_Estimated_log_transformed_corr",
                              genotypes = unique(as.character(LA_remove_series_out$genotype)),
                              knots = 50,
                              minNoTP = 10)
@@ -187,9 +187,9 @@ LA_spline_lines_after_remove_outlier_series <- fitSpline(inDat = LA_remove_serie
 plot(LA_spline_lines_after_remove_outlier_series,genotypes = "DH_KE0002" )
 
 Height_spline_lines_after_remove_outlier_series <- fitSpline(inDat = Height_remove_series_out,
-                                 trait = "Height_Estimated_corr",
+                                 trait = "Height_Estimated_log_transformed_corr",
                                  genotypes = unique(as.character(Height_remove_series_out$genotype)),
-                                 knots = 20,
+                                 knots = 50,
                                  minNoTP = 10,
                                  )
 
