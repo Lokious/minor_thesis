@@ -134,11 +134,11 @@ def data_prepare(simulated_dataset):
 
 def normalization(dataset:torch.tensor)->torch.tensor:
 
-    # normalization
-    # train the normalization
+    # normalization to (1,2)
+
     print(dataset.shape)
-    from sklearn.preprocessing import StandardScaler
-    scaler = StandardScaler()
+    from sklearn.preprocessing import StandardScaler,MinMaxScaler
+    scaler = MinMaxScaler((1,3))
     timeseries_tensor = []
 
     dataset = torch.permute(dataset, (2, 1, 0))

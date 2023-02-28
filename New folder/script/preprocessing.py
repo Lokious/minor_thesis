@@ -141,7 +141,7 @@ def calculate_average_traits_value_by_day(trait_df:pd.DataFrame)->pd.DataFrame:
     print(non_numical_column)
     non_numical_column = non_numical_column.drop_duplicates()
     print(non_numical_column)
-    # very plant should be measured once per day, for those measured multiple times, calculate mean
+    # every plant should be measured once per day, for those measured multiple times, calculate mean
     after_average = trait_df.groupby(["plantid","Day"])["LA_Estimated", "Height_Estimated", "Biomass_Estimated"].mean().reset_index()
     print(after_average)
     useful_column=after_average.merge(non_numical_column,on=["plantid","Day"])
@@ -523,9 +523,10 @@ def main():
     #calculate_SNPs_relationship(snps_df=data_geno_genotype)
     # data_DH_platform = dill.load(open("../data/image_DHline_data", "rb"))
     #
-    # data_DH_platform = pd.read_csv("../data/image_DHline_data_after_average_based_on_day_log.csv",header=0,index_col=0)
-    # generate_a_test_set_by_duplicate_the_data_from_several_genotypes_and_add_noise(
-    #     data_DH_platform)
+    #data_DH_platform = pd.read_csv("../data/image_DHline_data_after_average_based_on_day_log.csv",header=0,index_col=0)
+    data_DH_platform = pd.read_csv("../data/spline_extract_features/height_predict_withp_spline.csv")
+    generate_a_test_set_by_duplicate_the_data_from_several_genotypes_and_add_noise(
+        data_DH_platform)
 
     # field_DH_data =dill.load(open("../data/field_DHline_data",'rb'))
     # gene_field = set(field_DH_data["InbredCode"].unique())

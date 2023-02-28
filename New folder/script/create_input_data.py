@@ -21,20 +21,28 @@ def merge_snp_with_genotype(selected_snps:pd.DataFrame,genotypes:pd.DataFrame):
     return selcted_genotype_snps_df
 
 
-def merge_SNP_with_traits_df(traits_df,selected_snp_df):
+def merge_SNP_with_traits_df(traits_df,selected_snp_df,input_dir):
 
     selected_snp_df['genotype_name'] = list(selected_snp_df.index)
     selected_snp_df = selected_snp_df.reset_index(drop=True)
-    traits_df = traits_df[['genotype_name',"plantid"]]
+    #keep genotype_name and related plantid
+    try:
+        traits_df = traits_df[['genotype_name',"plantid"]]
+        print("use plantid")
+    except:
+        traits_df = traits_df[['genotype', "plotId"]]
+        print("use plotId")
+        traits_df=traits_df.rename(columns={'genotype':'genotype_name'})
+
     print(len(traits_df["genotype_name"].unique()))
     list1 =list(traits_df["genotype_name"].unique())
     # merge based on genotype:
     pd_new = traits_df.merge(selected_snp_df, on="genotype_name")
     list2 = list(pd_new["genotype_name"].unique())
-    print(set(list1)-set(list2))
+    # print(set(list1)-set(list2))
     pd_new = pd_new.drop_duplicates()
     print(pd_new)
-    pd_new.to_csv("../data/merged_trait_snps.csv")
+    pd_new.to_csv("{}/merged_trait_snps.csv".format(input_dir))
 
     return pd_new
 
@@ -44,7 +52,7 @@ def data_prepare(simulated_dataset,label_df,snp,save_directory="../data/input_da
     :return: input_x,input_y,n_features
     """
     def create_tensor_dataset(dfs):
-        #(41,418,3)
+        #(41,418,3) if use three trait raw data
         datasets = []
         for df in dfs:
             sequences = df.astype(np.float32).to_numpy().tolist()
@@ -56,11 +64,11 @@ def data_prepare(simulated_dataset,label_df,snp,save_directory="../data/input_da
         # print("shape of created dataset:")
         # print(tensor_dataset.shape)
 
-        n_features,seq_len,n_seq= tensor_dataset.shape
+        n_features, seq_len, n_seq = tensor_dataset.shape
 
         return tensor_dataset,n_features
 
-    tensor_dataset,n_features = create_tensor_dataset(simulated_dataset)
+    tensor_dataset, n_features = create_tensor_dataset(simulated_dataset)
     # creating tensor from targets_df
     tensor_lable = torch.tensor(label_df[snp].values.astype('float'))
     tensor_lable = torch.unsqueeze(tensor_lable,1)
@@ -81,7 +89,7 @@ def data_prepare(simulated_dataset,label_df,snp,save_directory="../data/input_da
 
     return tensor_dataset,tensor_lable,n_features
 
-def create_input_data(snp_df:str="../data/chosen_snps_map.csv",geno_df:str="../data/data_geno_genotype",Xs:list=[],save_directory:str="../data/input_data"):
+def create_input_data(snp_df:str="../data/chosen_snps_map.csv",geno_df:str="../data/data_geno_genotype",Xs:list=[],save_directory:str="../data/input_data",trait_file="../data/image_DHline_data_after_average_based_on_day.csv"):
     # read file
     snp_df = pd.read_csv(snp_df, header=0, index_col=0)
 
@@ -102,11 +110,11 @@ def create_input_data(snp_df:str="../data/chosen_snps_map.csv",geno_df:str="../d
     # print(len(selected_snp_df.columns))
 
     # read traits df without spatial correction
-    traits_df = pd.read_csv(
-        "../data/image_DHline_data_after_average_based_on_day.csv", header=0,
+    traits_df = pd.read_csv(trait_file
+        , header=0,
         index_col=0)
 
-    merge_traits_snps = merge_SNP_with_traits_df(traits_df, selected_snp_df)
+    merge_traits_snps = merge_SNP_with_traits_df(traits_df, selected_snp_df,save_directory)
 
 
     for snp in snp_list:
@@ -125,19 +133,35 @@ def keep_overlap_plant_for_input_data(file_directory:str="../data/spline_extract
         # print(df_new)
         df_list.append(df_new)
         columns_name_list.append(list(df_new.columns))
-    print(columns_name_list)
+    # print(columns_name_list)
     overlap_plant_id = set.intersection(*[set(x) for x in columns_name_list])
-    print(overlap_plant_id)
-    print(len(overlap_plant_id))
+    # print(overlap_plant_id)
+    # print(len(overlap_plant_id))
     for df in df_list:
         df_remove_no_overlap = df[list(overlap_plant_id)]
+        print(len(df_remove_no_overlap.columns))
+        # remove the start and end day wich includes nan
+        df_remove_no_overlap = df_remove_no_overlap.dropna()
         overlap_df.append(df_remove_no_overlap)
+
+    # save traits files (before reformat) with only overlap plantid,
+    # use for create input_Y
+    files = glob.glob("{}{}".format(file_directory, "*predict_withp_spline.csv"))
+
+    for file in files:
+        print(file)
+        df = pd.read_csv(file,header=0,index_col=0)
+        df = df[df["plotId"].isin(overlap_plant_id)]
+        file_name=file.split("\\")[1]
+        save_file_name = file_directory + file_name.split("_")[0]+"_overlap_plotId.csv"
+        df.to_csv(save_file_name)
+
     return overlap_df
 
 def main():
     # # read reformat df
-    new_df_LA = pd.read_csv("../data/df_LA.csv", header=0, index_col=0)
-    print(new_df_LA)
+    # new_df_LA = pd.read_csv("../data/df_LA.csv", header=0, index_col=0)
+    # print(new_df_LA)
     # new_df_Height = pd.read_csv("../data/df_Height.csv", header=0, index_col=0)
     # new_df_Biomass = pd.read_csv("../data/df_Biomass.csv", header=0,
     #                              index_col=0)
@@ -145,9 +169,9 @@ def main():
     #
 
     Xs = keep_overlap_plant_for_input_data()
+    #print(Xs)
 
-
-    create_input_data(Xs=Xs,save_directory="../data/input_data/spline_predict_input")
+    create_input_data(Xs=Xs,save_directory="../data/input_data/spline_predict_input",trait_file="../data/spline_extract_features/LA_overlap_plotId.csv")
 
 if __name__ == '__main__':
     main()
