@@ -66,9 +66,9 @@ plot(LA_singleOut, outOnly = FALSE, plotIds = platformdata$XY[1:3])
 plot(Height_singleOut, outOnly = FALSE, plotIds = platformdata$XY[1:3])
 plot(Biomass_singleOut, outOnly = FALSE, plotIds = platformdata$XY[1:3])
 # count outlier: around 10% different from killian got, because i did not set 
-sum(LA_singleOut$outlier) #2654 #log transform out:2195
-sum(Height_singleOut$outlier) #1653 #2382
-sum(Biomass_singleOut$outlier) #3334 #3172
+sum(LA_singleOut$outlier) #2654 #log transform out:1572
+sum(Height_singleOut$outlier) #1653 #1437
+sum(Biomass_singleOut$outlier) #3334 #2770
 
 # remove single outlier: Height, LA ->outlying point will be replace by NA
 phenoTP_remove_out_LA <- removeSingleOut(phenoTP, LA_singleOut)
@@ -85,14 +85,15 @@ phenoTP_remove_out_LA_Height <- removeSingleOut(phenoTP_remove_out_LA, Height_si
 # the last day only contains rep 3, we  will not include it while fit model
 ## Error in `contrasts<-`(`*tmp*`, value = contr.funs[1 + isOF[nn]]) : 
 ## contrasts can be applied only to factors with 2 or more levels
+
 LA_spline_model <- fitModels(TP = phenoTP_remove_out_LA_Height,
-                             trait = "LA_Estimated",
+                             trait = "LA_Estimated_log_transformed",
                              timePoints = 1:44,
                              what = "fixed",
                              useRepId = TRUE)
 
 Height_spline_model <- fitModels(TP = phenoTP_remove_out_LA_Height,
-                                  trait = "Height_Estimated",
+                                  trait = "Height_Estimated_log_transformed",
                                  timePoints = 1:44,
                                  what = "fixed",
                                  useRepId = TRUE)
@@ -195,11 +196,19 @@ Height_spline_lines_after_remove_outlier_series <- fitSpline(inDat = Height_remo
 # extract some features and predicted values maybe use for following prediction.
 Height_predict <- na.omit(Height_spline_lines_after_remove_outlier_series$predDat)
 Height_coefient<- na.omit(Height_spline_lines_after_remove_outlier_series$coefDat)
-write.csv(LA_spline_lines_after_remove_outlier_series)
+
 LA_predict <- na.omit(LA_spline_lines_after_remove_outlier_series$predDat)
 LA_coefient <- na.omit(LA_spline_lines_after_remove_outlier_series$coefDat)
 
+
+
+write.csv(Height_predict,"../data/height_predict_withp_spline.csv")
+write.csv(Height_coefient,"../data/height_coeficient_withp_spline.csv")
+write.csv(LA_predict,"../data/LA_predict_withp_spline.csv")
+write.csv(LA_coefient,"../data/LA_coeficient_withp_spline.csv")
+
 ###the following fetures doesn't have time series, save it separately
+
 # extract AUC based on days
 LA.AUC <- estimateSplineParameters(x = LA_spline_lines_after_remove_outlier_series,
                                    estimate = "predictions",
@@ -242,7 +251,7 @@ Height.meanDeriv <- estimateSplineParameters(x = Height_spline_lines_after_remov
                                              estimate = "derivatives",
                                              what = "mean",
 )
-
+# droplevels(): remove unused levels from a factor variabl
 LA_AUC <- droplevels(na.omit(LA.AUC))
 Height_AUC <- droplevels(na.omit(Height.AUC))
 
@@ -256,15 +265,17 @@ LA_meanDeriv <- droplevels(na.omit(LA.meanDeriv))
 Height_meanDeriv <- droplevels(na.omit(Height.meanDeriv))
 
 #merge data for LA and Height
+#####something wrong below####
 library(tidyverse)
 ## put all data frames into list
-LA_df_list <- list( LA_AUC,LA_maxDeriv,LA_maxPred,LA_meanDeriv)      
-Height_df_list <- list( Height_AUC,Height_maxDeriv,Height_maxPred,Height_meanDeriv)      
+LA_df_list <- list( LA_AUC,LA_maxDeriv,LA_maxPred,LA_meanDeriv)
+Height_df_list <- list( Height_AUC,Height_maxDeriv,Height_maxPred,Height_meanDeriv)
 
 #merge all data frames together
-Reduce(function(x, y) merge(x, y, all=FALSE), list_df)
-LA_df_list %>% reduce(full_join_LA, by='plotid')
-Height_df_list %>% reduce(full_join_Height, by=c('plotid'))
+Reduce(function(x, y) merge(x, y, all=TRUE), LA_df_list)
+LA_df_list
+LA_df_list %>% reduce(LA_df_list, by='plotid')
+Height_df_list %>% reduce(Height_df_list, by=c('plotid'))
 
 # droplevels(): remove unused levels from a factor variabl
 write.csv(full_join_LA,"../data/LA_features_from_spline.csv")

@@ -426,8 +426,11 @@ def pre_process_for_spline_extract_features(file):
 
     print(platform_data)
     #take one value per day
-    platform_data = platform_data[platform_data["timePoint"].str.endswith("00:00:00")]
-    platform_data["timePoint"] = platform_data["timePoint"].apply(lambda x: pd.Series(str(x).split(" ")[0]))
+
+    platform_data = platform_data[platform_data["timeNumber"].isin(list(range(46)))]
+    platform_data["timePoint"] = platform_data["timeNumber"]
+    # platform_data = platform_data[platform_data["timePoint"].str.endswith("00:00:00")]
+    # platform_data["timePoint"] = platform_data["timePoint"].apply(lambda x: pd.Series(str(x).split(" ")[0]))
     print(platform_data)
     #platform_data = platform_data.fillna(0.0)
     # print(len(platform_data["genotype_name"].unique()))
@@ -524,9 +527,9 @@ def main():
     # data_DH_platform = dill.load(open("../data/image_DHline_data", "rb"))
     #
     #data_DH_platform = pd.read_csv("../data/image_DHline_data_after_average_based_on_day_log.csv",header=0,index_col=0)
-    data_DH_platform = pd.read_csv("../data/spline_extract_features/height_predict_withp_spline.csv")
-    generate_a_test_set_by_duplicate_the_data_from_several_genotypes_and_add_noise(
-        data_DH_platform)
+    # data_DH_platform = pd.read_csv("../data/spline_extract_features/height_predict_withp_spline.csv")
+    # generate_a_test_set_by_duplicate_the_data_from_several_genotypes_and_add_noise(
+    #     data_DH_platform)
 
     # field_DH_data =dill.load(open("../data/field_DHline_data",'rb'))
     # gene_field = set(field_DH_data["InbredCode"].unique())

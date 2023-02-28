@@ -637,3 +637,764 @@ False Negatives: 44
 True Positives: 0
 test loss: 0.4572140872478485
 #####AX-91460656#######
+training loss at last epoch: 1.2561113459674955
+Training result:True Negatives: 564
+False Positives: 0
+False Negatives: 52
+True Positives: 0
+test loss: 0.11440422385931015
+--------------------------
+test loss: 0.3298827111721039
+True Negatives: 237
+False Positives: 0
+False Negatives: 27
+True Positives: 0
+test loss: 0.3298827111721039
+#####AX-90661015#######
+#####AX-90661468#######
+training loss at last epoch: 0.5856477620394586
+error loss: 0.13427357375621796
+--------------------------
+test loss: 0.13465043902397156
+errortest loss: 0.13465043902397156
+#####AX-90662035#######
+training loss at last epoch: 2.172791650639726
+Training result:True Negatives: 494
+False Positives: 0
+False Negatives: 122
+True Positives: 0
+test loss: 0.6599380970001221
+--------------------------
+test loss: 0.44987109303474426
+True Negatives: 223
+False Positives: 0
+False Negatives: 41
+True Positives: 0
+test loss: 0.44987109303474426
+#####AX-90662525#######
+training loss at last epoch: 3.001766917090137
+Training result:True Negatives: 265
+False Positives: 45
+False Negatives: 257
+True Positives: 49
+test loss: 0.6939268112182617
+--------------------------
+test loss: 0.6928627490997314
+True Negatives: 121
+False Positives: 16
+False Negatives: 107
+True Positives: 20
+test loss: 0.6928627490997314
+#####AX-91462350#######
+training loss at last epoch: 2.9038144557119963
+Training result:True Negatives: 373
+False Positives: 0
+False Negatives: 243
+True Positives: 0
+test loss: 0.7085819244384766
+--------------------------
+test loss: 0.6999469995498657
+True Negatives: 141
+False Positives: 0
+False Negatives: 123
+True Positives: 0
+test loss: 0.6999469995498657
+#####AX-90663580#######
+training loss at last epoch: 1.229876453734257
+Training result:True Negatives: 577
+False Positives: 0
+False Negatives: 39
+True Positives: 0
+test loss: 0.18264098465442657
+--------------------------
+test loss: 0.3105372190475464
+True Negatives: 243
+False Positives: 0
+False Negatives: 21
+True Positives: 0
+test loss: 0.3105372190475464
+#####AX-91463049#######
+training loss at last epoch: 2.85805257409811
+Training result:True Negatives: 386
+False Positives: 0
+False Negatives: 230
+True Positives: 0
+test loss: 0.566046953201294
+--------------------------
+test loss: 0.6651915907859802
+True Negatives: 163
+False Positives: 0
+False Negatives: 101
+True Positives: 0
+test loss: 0.6651915907859802
+#####AX-90664534#######
+training loss at last epoch: 2.9595868733602684
+Training result:True Negatives: 351
+False Positives: 0
+False Negatives: 265
+True Positives: 0
+test loss: 0.6987383365631104
+--------------------------
+test loss: 0.6599894165992737
+True Negatives: 177
+False Positives: 0
+False Negatives: 87
+True Positives: 0
+test loss: 0.6599894165992737
+#####AX-90665008#######
+training loss at last epoch: 2.747077943829747
+Training result:True Negatives: 0
+False Positives: 201
+False Negatives: 0
+True Positives: 415
+test loss: 0.6386616230010986
+--------------------------
+test loss: 0.6174360513687134
+True Negatives: 0
+False Positives: 78
+False Negatives: 0
+True Positives: 186
+test loss: 0.6174360513687134
+#####AX-90665509#######
+training loss at last epoch: 2.95310382380501
+Training result:True Negatives: 0
+False Positives: 263
+False Negatives: 0
+True Positives: 353
+test loss: 0.6579095125198364
+--------------------------
+test loss: 0.6935060620307922
+True Negatives: 0
+False Positives: 124
+False Negatives: 0
+True Positives: 140
+test loss: 0.6935060620307922
+#####AX-90666077#######
+training loss at last epoch: 1.9278385376485137
+Training result:True Negatives: 515
+False Positives: 0
+False Negatives: 101
+True Positives: 0
+test loss: 0.19533681869506836
+--------------------------
+test loss: 0.456668883562088
+True Negatives: 219
+False Positives: 0
+False Negatives: 45
+True Positives: 0
+test loss: 0.456668883562088
+#####AX-90666549#######
+training loss at last epoch: 2.0839674584083743
+Training result:True Negatives: 501
+False Positives: 0
+False Negatives: 115
+True Positives: 0
+test loss: 0.44954630732536316
+--------------------------
+test loss: 0.4807744026184082
+True Negatives: 215
+False Positives: 0
+False Negatives: 49
+True Positives: 0
+test loss: 0.4807744026184082
+#####AX-91465064#######
+training loss at last epoch: 2.869495078050471
+Training result:True Negatives: 383
+False Positives: 0
+False Negatives: 233
+True Positives: 0
+test loss: 0.6451910138130188
+--------------------------
+test loss: 0.6691949367523193
+True Negatives: 161
+False Positives: 0
+False Negatives: 103
+True Positives: 0
+test loss: 0.6691949367523193
+#####AX-90667573#######
+training loss at last epoch: 2.9374156567183407
+Training result:True Negatives: 0
+False Positives: 262
+False Negatives: 0
+True Positives: 354
+test loss: 0.623107373714447
+--------------------------
+test loss: 0.6880025267601013
+True Negatives: 0
+False Positives: 114
+False Negatives: 0
+True Positives: 150
+test loss: 0.6880025267601013
+#####AX-90611396#######
+training loss at last epoch: 1.4358359474398485
+Training result:True Negatives: 555
+False Positives: 0
+False Negatives: 61
+True Positives: 0
+test loss: 0.44995760917663574
+--------------------------
+test loss: 0.39839062094688416
+True Negatives: 228
+False Positives: 0
+False Negatives: 36
+True Positives: 0
+test loss: 0.39839062094688416
+#####AX-91465922#######
+training loss at last epoch: 1.640813938112228
+Training result:True Negatives: 540
+False Positives: 0
+False Negatives: 76
+True Positives: 0
+test loss: 0.45544132590293884
+--------------------------
+test loss: 0.38756993412971497
+True Negatives: 230
+False Positives: 0
+False Negatives: 34
+True Positives: 0
+test loss: 0.38756993412971497
+#####AX-90668901#######
+training loss at last epoch: 0.8662326416944142
+Training result:True Negatives: 589
+False Positives: 0
+False Negatives: 27
+True Positives: 0
+test loss: 0.10472762584686279
+--------------------------
+test loss: 0.20463165640830994
+True Negatives: 252
+False Positives: 0
+False Negatives: 12
+True Positives: 0
+test loss: 0.20463165640830994
+#####AX-90669406#######
+training loss at last epoch: 1.9232149984832707
+Training result:True Negatives: 0
+False Positives: 99
+False Negatives: 0
+True Positives: 517
+test loss: 0.7067976593971252
+--------------------------
+test loss: 0.4338914453983307
+True Negatives: 0
+False Positives: 41
+False Negatives: 0
+True Positives: 223
+test loss: 0.4338914453983307
+#####AX-90669810#######
+training loss at last epoch: 1.5442767851538473
+Training result:True Negatives: 550
+False Positives: 0
+False Negatives: 66
+True Positives: 0
+test loss: 0.18995101749897003
+--------------------------
+test loss: 0.3384401202201843
+True Negatives: 239
+False Positives: 0
+False Negatives: 25
+True Positives: 0
+test loss: 0.3384401202201843
+#####AX-91467170#######
+training loss at last epoch: 2.9327717050909996
+Training result:True Negatives: 0
+False Positives: 254
+False Negatives: 0
+True Positives: 362
+test loss: 0.6510121822357178
+--------------------------
+test loss: 0.6547828912734985
+True Negatives: 0
+False Positives: 90
+False Negatives: 0
+True Positives: 174
+test loss: 0.6547828912734985
+#####AX-90670754#######
+training loss at last epoch: 1.1191760155481179
+Training result:True Negatives: 0
+False Positives: 38
+False Negatives: 0
+True Positives: 578
+test loss: 0.14389380812644958
+--------------------------
+test loss: 0.24988272786140442
+True Negatives: 0
+False Positives: 15
+False Negatives: 0
+True Positives: 249
+test loss: 0.24988272786140442
+#####AX-91467847#######
+training loss at last epoch: 2.2035884056966024
+Training result:True Negatives: 491
+False Positives: 0
+False Negatives: 125
+True Positives: 0
+test loss: 0.2872837483882904
+--------------------------
+test loss: 0.4831635355949402
+True Negatives: 217
+False Positives: 0
+False Negatives: 47
+True Positives: 0
+test loss: 0.4831635355949402
+#####AX-91468148#######
+training loss at last epoch: 2.8248611347532115
+Training result:True Negatives: 396
+False Positives: 0
+False Negatives: 220
+True Positives: 0
+test loss: 0.7351617813110352
+--------------------------
+test loss: 0.6572301387786865
+True Negatives: 167
+False Positives: 0
+False Negatives: 97
+True Positives: 0
+test loss: 0.6572301387786865
+#####AX-90672120#######
+training loss at last epoch: 1.6362788463616138
+Training result:True Negatives: 540
+False Positives: 0
+False Negatives: 76
+True Positives: 0
+test loss: 0.45009493827819824
+--------------------------
+test loss: 0.38054415583610535
+True Negatives: 231
+False Positives: 0
+False Negatives: 33
+True Positives: 0
+test loss: 0.38054415583610535
+#####AX-91468827#######
+training loss at last epoch: 1.8108929782476906
+Training result:True Negatives: 0
+False Positives: 88
+False Negatives: 0
+True Positives: 528
+test loss: 0.2179926484823227
+--------------------------
+test loss: 0.39985036849975586
+True Negatives: 0
+False Positives: 34
+False Negatives: 0
+True Positives: 230
+test loss: 0.39985036849975586
+#####AX-90673104#######
+training loss at last epoch: 2.8746822025481755
+Training result:True Negatives: 0
+False Positives: 234
+False Negatives: 0
+True Positives: 382
+test loss: 0.7192402482032776
+--------------------------
+test loss: 0.6535684466362
+True Negatives: 0
+False Positives: 94
+False Negatives: 0
+True Positives: 170
+test loss: 0.6535684466362
+#####AX-90673546#######
+training loss at last epoch: 2.484673515494381
+Training result:True Negatives: 0
+False Positives: 159
+False Negatives: 0
+True Positives: 457
+test loss: 0.35837098956108093
+--------------------------
+test loss: 0.5494563579559326
+True Negatives: 0
+False Positives: 60
+False Negatives: 0
+True Positives: 204
+test loss: 0.5494563579559326
+#####AX-91469892#######
+training loss at last epoch: 2.6771030002213143
+Training result:True Negatives: 0
+False Positives: 190
+False Negatives: 0
+True Positives: 426
+test loss: 0.6367354393005371
+--------------------------
+test loss: 0.6423015594482422
+True Negatives: 0
+False Positives: 90
+False Negatives: 0
+True Positives: 174
+test loss: 0.6423015594482422
+#####AX-90674492#######
+training loss at last epoch: 2.9848436088144004
+Training result:True Negatives: 312
+False Positives: 15
+False Negatives: 264
+True Positives: 25
+test loss: 0.6502845287322998
+--------------------------
+test loss: 0.6853842735290527
+True Negatives: 142
+False Positives: 11
+False Negatives: 106
+True Positives: 5
+test loss: 0.6853842735290527
+#####AX-91470550#######
+training loss at last epoch: 1.9441816676649954
+Training result:True Negatives: 514
+False Positives: 0
+False Negatives: 102
+True Positives: 0
+test loss: 0.4509221017360687
+--------------------------
+test loss: 0.4387381970882416
+True Negatives: 222
+False Positives: 0
+False Negatives: 42
+True Positives: 0
+test loss: 0.4387381970882416
+#####AX-91470860#######
+training loss at last epoch: 2.762393953786655
+Training result:True Negatives: 409
+False Positives: 0
+False Negatives: 207
+True Positives: 0
+test loss: 0.4414474666118622
+--------------------------
+test loss: 0.6019418835639954
+True Negatives: 192
+False Positives: 0
+False Negatives: 72
+True Positives: 0
+test loss: 0.6019418835639954
+#####AX-91204990#######
+training loss at last epoch: 1.3444646244457403
+Training result:True Negatives: 0
+False Positives: 54
+False Negatives: 0
+True Positives: 562
+test loss: 0.453958660364151
+--------------------------
+test loss: 0.28788328170776367
+True Negatives: 0
+False Positives: 20
+False Negatives: 0
+True Positives: 244
+test loss: 0.28788328170776367
+#####AX-91334870#######
+training loss at last epoch: 0.6954837583561803
+Training result:True Negatives: 0
+False Positives: 16
+False Negatives: 0
+True Positives: 600
+test loss: 0.8538901209831238
+--------------------------
+test loss: 0.18291914463043213
+True Negatives: 0
+False Positives: 10
+False Negatives: 0
+True Positives: 254
+test loss: 0.18291914463043213
+#####AX-91471857#######
+training loss at last epoch: 1.252131440108279
+Training result:True Negatives: 568
+False Positives: 0
+False Negatives: 48
+True Positives: 0
+test loss: 0.14576856791973114
+--------------------------
+test loss: 0.3493849039077759
+True Negatives: 235
+False Positives: 0
+False Negatives: 29
+True Positives: 0
+test loss: 0.3493849039077759
+#####AX-90530084#######
+training loss at last epoch: 1.8894853115130168
+Training result:True Negatives: 522
+False Positives: 0
+False Negatives: 94
+True Positives: 0
+test loss: 0.23552632331848145
+--------------------------
+test loss: 0.4768674671649933
+True Negatives: 216
+False Positives: 0
+False Negatives: 48
+True Positives: 0
+test loss: 0.4768674671649933
+#####AX-91205110#######
+training loss at last epoch: 1.3705363251607527
+Training result:True Negatives: 0
+False Positives: 54
+False Negatives: 0
+True Positives: 562
+test loss: 0.17037837207317352
+--------------------------
+test loss: 0.37448638677597046
+True Negatives: 0
+False Positives: 32
+False Negatives: 0
+True Positives: 232
+test loss: 0.37448638677597046
+#####AX-90678137#######
+training loss at last epoch: 2.9816932619198577
+Training result:True Negatives: 0
+False Positives: 278
+False Negatives: 0
+True Positives: 338
+test loss: 0.7245745062828064
+--------------------------
+test loss: 0.700786828994751
+True Negatives: 0
+False Positives: 141
+False Negatives: 0
+True Positives: 123
+test loss: 0.700786828994751
+#####AX-91473263#######
+training loss at last epoch: 0.4886201306113175
+Training result:True Negatives: 609
+False Positives: 0
+False Negatives: 7
+True Positives: 0
+test loss: 0.08508062362670898
+--------------------------
+test loss: 0.10346989333629608
+True Negatives: 262
+False Positives: 0
+False Negatives: 2
+True Positives: 0
+test loss: 0.10346989333629608
+#####AX-91473635#######
+training loss at last epoch: 0.450519007848358
+error loss: 0.10356036573648453
+--------------------------
+test loss: 0.1033744066953659
+errortest loss: 0.1033744066953659
+#####AX-90679649#######
+training loss at last epoch: 2.676970543896223
+Training result:True Negatives: 424
+False Positives: 0
+False Negatives: 192
+True Positives: 0
+test loss: 0.6471772789955139
+--------------------------
+test loss: 0.6059564352035522
+True Negatives: 187
+False Positives: 0
+False Negatives: 77
+True Positives: 0
+test loss: 0.6059564352035522
+#####AX-90680158#######
+training loss at last epoch: 2.9704996393872545
+Training result:True Negatives: 345
+False Positives: 0
+False Negatives: 271
+True Positives: 0
+test loss: 0.6987948417663574
+--------------------------
+test loss: 0.7008447647094727
+True Negatives: 131
+False Positives: 0
+False Negatives: 133
+True Positives: 0
+test loss: 0.7008447647094727
+#####AX-90680888#######
+training loss at last epoch: 1.4401930064059698
+Training result:True Negatives: 554
+False Positives: 0
+False Negatives: 62
+True Positives: 0
+test loss: 0.7901995778083801
+--------------------------
+test loss: 0.3840043544769287
+True Negatives: 230
+False Positives: 0
+False Negatives: 34
+True Positives: 0
+test loss: 0.3840043544769287
+#####AX-91335218#######
+training loss at last epoch: 2.752915693713086
+Training result:True Negatives: 0
+False Positives: 206
+False Negatives: 0
+True Positives: 410
+test loss: 0.4249199330806732
+--------------------------
+test loss: 0.6442070007324219
+True Negatives: 0
+False Positives: 91
+False Negatives: 0
+True Positives: 173
+test loss: 0.6442070007324219
+#####AX-91437247#######
+training loss at last epoch: 0.3665549594957333
+error loss: 0.08401855081319809
+--------------------------
+test loss: 0.08423198014497757
+errortest loss: 0.08423198014497757
+#####AX-90682271#######
+training loss at last epoch: 2.9641662174231045
+Training result:True Negatives: 0
+False Positives: 270
+False Negatives: 0
+True Positives: 346
+test loss: 0.6983402371406555
+--------------------------
+test loss: 0.6724567413330078
+True Negatives: 0
+False Positives: 101
+False Negatives: 0
+True Positives: 163
+test loss: 0.6724567413330078
+#####AX-90530442#######
+training loss at last epoch: 2.423807023552718
+Training result:True Negatives: 0
+False Positives: 152
+False Negatives: 0
+True Positives: 464
+test loss: 0.4801710844039917
+--------------------------
+test loss: 0.5680028796195984
+True Negatives: 0
+False Positives: 67
+False Negatives: 0
+True Positives: 197
+test loss: 0.5680028796195984
+#####AX-91476701#######
+training loss at last epoch: 2.999015878063518
+Training result:True Negatives: 76
+False Positives: 219
+False Negatives: 85
+True Positives: 236
+test loss: 0.638333797454834
+--------------------------
+test loss: 0.6923850178718567
+True Negatives: 32
+False Positives: 81
+False Negatives: 44
+True Positives: 107
+test loss: 0.6923850178718567
+#####AX-90683564#######
+training loss at last epoch: 0.3916128778394747
+Training result:True Negatives: 614
+False Positives: 0
+False Negatives: 2
+True Positives: 0
+test loss: 0.08234413713216782
+--------------------------
+test loss: 0.09148422628641129
+True Negatives: 263
+False Positives: 0
+False Negatives: 1
+True Positives: 0
+test loss: 0.09148422628641129
+#####AX-91477276#######
+training loss at last epoch: 0.9379748859527436
+Training result:True Negatives: 595
+False Positives: 0
+False Negatives: 21
+True Positives: 0
+test loss: 0.15612684190273285
+--------------------------
+test loss: 0.23014551401138306
+True Negatives: 253
+False Positives: 0
+False Negatives: 11
+True Positives: 0
+test loss: 0.23014551401138306
+#####AX-90684486#######
+training loss at last epoch: 2.8901167845280913
+Training result:True Negatives: 376
+False Positives: 0
+False Negatives: 240
+True Positives: 0
+test loss: 0.49895307421684265
+--------------------------
+test loss: 0.6752892732620239
+True Negatives: 157
+False Positives: 0
+False Negatives: 107
+True Positives: 0
+test loss: 0.6752892732620239
+#####AX-91477965#######
+training loss at last epoch: 2.9974391672324825
+Training result:True Negatives: 327
+False Positives: 0
+False Negatives: 289
+True Positives: 0
+test loss: 0.7542120814323425
+--------------------------
+test loss: 0.6898760795593262
+True Negatives: 142
+False Positives: 0
+False Negatives: 122
+True Positives: 0
+test loss: 0.6898760795593262
+#####AX-91478213#######
+training loss at last epoch: 0.8730324432737642
+Training result:True Negatives: 595
+False Positives: 0
+False Negatives: 21
+True Positives: 0
+test loss: 0.13598869740962982
+--------------------------
+test loss: 0.21618568897247314
+True Negatives: 253
+False Positives: 0
+False Negatives: 11
+True Positives: 0
+test loss: 0.21618568897247314
+#####AX-91478408#######
+training loss at last epoch: 0.48534924107567445
+Training result:True Negatives: 613
+False Positives: 0
+False Negatives: 3
+True Positives: 0
+test loss: 0.100580133497715
+--------------------------
+test loss: 0.11770586669445038
+True Negatives: 262
+False Positives: 0
+False Negatives: 2
+True Positives: 0
+test loss: 0.11770586669445038
+#####AX-90685818#######
+training loss at last epoch: 2.989979373460466
+Training result:True Negatives: 327
+False Positives: 0
+False Negatives: 289
+True Positives: 0
+test loss: 0.6648216247558594
+--------------------------
+test loss: 0.6903977394104004
+True Negatives: 142
+False Positives: 0
+False Negatives: 122
+True Positives: 0
+test loss: 0.6903977394104004
+#####AX-90686193#######
+training loss at last epoch: 0.57654495594128
+Training result:True Negatives: 613
+False Positives: 0
+False Negatives: 3
+True Positives: 0
+test loss: 0.12294024229049683
+--------------------------
+test loss: 0.13819707930088043
+True Negatives: 262
+False Positives: 0
+False Negatives: 2
+True Positives: 0
+test loss: 0.13819707930088043
+#####AX-90686705#######
+training loss at last epoch: 1.4124298933409638
+Training result:True Negatives: 564
+False Positives: 0
+False Negatives: 52
+True Positives: 0
+test loss: 0.1993771195411682
+--------------------------
+test loss: 0.2966543436050415
+True Negatives: 247
+False Positives: 0
+False Negatives: 17
+True Positives: 0
+test loss: 0.2966543436050415
+#####AX-91335471#######
