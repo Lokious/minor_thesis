@@ -25,7 +25,7 @@ class LSTM_classification(nn.Module):
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         self.lstm = nn.LSTM(input_size=input_size, hidden_size=hidden_size,num_layers=num_layers,
-                            dropout=dropout,bidirectional=True)
+                            dropout=dropout)
         self.fc = nn.Linear(hidden_size, 1)
         # output from 0 to 1
         self.sigmoid = nn.Sigmoid()
@@ -37,7 +37,6 @@ class LSTM_classification(nn.Module):
 
         # h0 shape：(num_layers * num_directions, batch, hidden_size)
         # c0 shape：(num_layers * num_directions, batch, hidden_size)
-
         h0 = torch.zeros(self.num_layers, x.size(1), self.hidden_size).to(
             x.device)
         c0 = torch.zeros(self.num_layers, x.size(1), self.hidden_size).to(
@@ -148,15 +147,10 @@ def training(model, x, y, batch_size):
             # Print statistics
             running_loss += loss.item() * inputs.size(0)
 
-
-            # if (i + 1) % 10 == 0:
-            #     print('Epoch [%d], batch [%d], loss: %.3f' % (
-            #         epoch + 1, i + 1, running_loss / ((i + 1) * batch_size)))
         if (epoch + 1) % 10 == 0:
             print('Epoch [{}/{}], Loss: {:.4f}'.format(epoch + 1, num_epochs,
                                                        running_loss / (num_sequences)))
-        # print('Epoch [%d], loss: %.3f' % (
-        #     epoch + 1, running_loss / num_sequences))
+
     else:
         model.eval()  # Set the model to evaluation mode
 
@@ -180,7 +174,7 @@ def training(model, x, y, batch_size):
                 print("False Negatives: {}".format(FN))
                 print("True Positives: {}".format(TP))
 
-                file = open("output_bilstm.txt", "a")
+                file = open("output_lstm.txt", "a")
                 file.write("training loss at last epoch: {}\n".format(
                     (running_loss / num_sequences)))
                 file.write("Training result:")
@@ -190,7 +184,7 @@ def training(model, x, y, batch_size):
                 file.write("True Positives: {}\n".format(TP))
                 file.write("test loss: {}\n".format(loss))
             except:
-                file = open("output_bilstm.txt", "a")
+                file = open("output_lstm.txt", "a")
                 file.write("training loss at last epoch: {}\n".format(
                     (running_loss / num_sequences)))
                 file.write("error")
@@ -212,7 +206,7 @@ def model_evaluation(model,x,y,snp):
         loss = criterion(outputs.float(), y.float())
 
         print("test loss: {}\n".format(loss))
-        file = open("output_bilstm.txt", "a")
+        file = open("output_lstm.txt", "a")
         file.write("--------------------------\n")
         file.write("test loss: {}\n".format(loss))
         try:
@@ -230,7 +224,7 @@ def model_evaluation(model,x,y,snp):
             print("False Positives: {}".format(FP))
             print("False Negatives: {}".format(FN))
             print("True Positives: {}".format(TP))
-            file = open("output_bilstm.txt", "a")
+            file = open("output_lstm.txt", "a")
             file.write("True Negatives: {}\n".format(TN))
             file.write("False Positives: {}\n".format(FP))
             file.write("False Negatives: {}\n".format(FN))
@@ -252,7 +246,7 @@ def model_evaluation(model,x,y,snp):
             plt.clf()
             return loss,TN,FP,TP,FN
         except:
-            file = open("output_bilstm.txt", "a")
+            file = open("output_lstm.txt", "a")
             file.write("error")
             file.write("test loss: {}\n".format(loss))
             return loss, "NA", "NA", "NA", "NA"
@@ -262,17 +256,27 @@ def main():
     # read and pre-process input (build model for each snp)
     snp_df = pd.read_csv("../data/chosen_snps_map.csv", header=0, index_col=0)
     snp_list = list(snp_df.index)
-    input_x = dill.load(open("../data/input_data/input_X","rb"))
+    input_x = dill.load(open("../data/input_data/spline_predict_input/input_X","rb"))
     from autoencoder import normalization
     input_x,scaler = normalization(input_x)
+
+    # #nan only at start and end
+    # print(input_x[:,:,0])
+    # df1 = pd.DataFrame(input_x[:,:,3].numpy())
+    # print(df1.isna().sum())
+
     test_result = {}
+    related_snps = []
     for snp in snp_list:
 
         # x:(time step, number of sequences, inputsize(3))
         # y: (number of sequences, class_number)
-        with open("output_bilstm.txt", "a") as f:
+        with open("output_lstm.txt", "a") as f:
             f.write("#####{}#######\n".format(snp))
-        input_y = dill.load(open("../data/input_data/input_Y_{}".format(snp),"rb"))
+        try:
+            input_y = dill.load(open("../data/input_data/spline_predict_input/input_Y_{}".format(snp),"rb"))
+        except:
+            continue
         # print(input_x.shape)
         # print(input_y.shape)
         from sklearn.model_selection import train_test_split
@@ -280,18 +284,27 @@ def main():
                                                             test_size=0.3,
                                                             random_state=1)
         # define model
-        model = BiLSTMClassifier(input_size=3, hidden_size=2, dropout=0.01)
+        model = LSTM_classification(input_size=6, hidden_size=2, dropout=0.01)
         # model training
         print(model)
+
         training(model, x=x_train, y=y_train, batch_size=10)
 
         # model evaluation
         #print(y_test)
         loss,TN,FP,TP,FN = model_evaluation(model,x_test,y_test,snp)
-        test_result[snp]= [loss,TN,FP,TP,FN]
-    else:
+        try:
+            if ((TN +FN) !=0) and ((TP + FP) != 0):
+                related_snps.append(snp)
+                save_df = pd.DataFrame(related_snps)
+                print(save_df)
+                save_df.to_csv("possiable_related_snps.csv")
+        except:
+            continue
+        test_result[snp] = [loss,TN,FP,TP,FN]
+        # save to csv file
         test_result_df=pd.DataFrame.from_dict(test_result, orient='index',
                                columns=['test_loss','TN','FP','TP','FN'])
-        test_result_df.to_csv("biLSTM_test_result.csv")
+        test_result_df.to_csv("LSTM_test_result.csv")
 if __name__ == '__main__':
     main()
