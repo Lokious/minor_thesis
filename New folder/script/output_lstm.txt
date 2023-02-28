@@ -398,3 +398,31 @@ False Negatives: 0
 True Positives: 171
 test loss: 0.649165153503418
 #####AX-91454486#######
+training loss at last epoch: 2.6454804433243617
+Training result:True Negatives: 431
+False Positives: 0
+False Negatives: 185
+True Positives: 0
+test loss: 0.39356282353401184
+--------------------------
+test loss: 0.628167450428009
+True Negatives: 179
+False Positives: 0
+False Negatives: 85
+True Positives: 0
+test loss: 0.628167450428009
+#####AX-90651771#######
+training loss at last epoch: 2.9915894407343555
+Training result:True Negatives: 333
+False Positives: 0
+False Negatives: 283
+True Positives: 0
+test loss: 0.7620190978050232
+--------------------------
+test loss: 0.6828626394271851
+True Negatives: 151
+False Positives: 0
+False Negatives: 113
+True Positives: 0
+test loss: 0.6828626394271851
+#####AX-90652325#######
