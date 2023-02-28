@@ -524,3 +524,88 @@ False Negatives: 17
 True Positives: 106
 test loss: 0.6978210210800171
 #####AX-90655890#######
+training loss at last epoch: 2.1679983522694606
+Training result:True Negatives: 0
+False Positives: 121
+False Negatives: 0
+True Positives: 495
+test loss: 0.2818391025066376
+--------------------------
+test loss: 0.47314298152923584
+True Negatives: 0
+False Positives: 45
+False Negatives: 0
+True Positives: 219
+test loss: 0.47314298152923584
+#####AX-90656425#######
+training loss at last epoch: 0.738387301854499
+Training result:True Negatives: 607
+False Positives: 0
+False Negatives: 9
+True Positives: 0
+test loss: 0.1418202817440033
+--------------------------
+test loss: 0.15694598853588104
+True Negatives: 262
+False Positives: 0
+False Negatives: 2
+True Positives: 0
+test loss: 0.15694598853588104
+#####AX-91458194#######
+training loss at last epoch: 1.4116661495879872
+Training result:True Negatives: 566
+False Positives: 0
+False Negatives: 50
+True Positives: 0
+test loss: 0.7016360759735107
+--------------------------
+test loss: 0.2871326506137848
+True Negatives: 249
+False Positives: 0
+False Negatives: 15
+True Positives: 0
+test loss: 0.2871326506137848
+#####AX-90630245#######
+training loss at last epoch: 3.0024392093930925
+Training result:True Negatives: 300
+False Positives: 18
+False Negatives: 286
+True Positives: 12
+test loss: 0.6957325339317322
+--------------------------
+test loss: 0.6955390572547913
+True Negatives: 114
+False Positives: 10
+False Negatives: 132
+True Positives: 8
+test loss: 0.6955390572547913
+#####AX-91458909#######
+training loss at last epoch: 2.5519060452359836
+Training result:True Negatives: 446
+False Positives: 0
+False Negatives: 170
+True Positives: 0
+test loss: 0.35752415657043457
+--------------------------
+test loss: 0.5737299919128418
+True Negatives: 197
+False Positives: 0
+False Negatives: 67
+True Positives: 0
+test loss: 0.5737299919128418
+#####AX-90658421#######
+training loss at last epoch: 0.6259496215755096
+Training result:True Negatives: 603
+False Positives: 0
+False Negatives: 13
+True Positives: 0
+test loss: 0.09543975442647934
+--------------------------
+test loss: 0.19984070956707
+True Negatives: 252
+False Positives: 0
+False Negatives: 12
+True Positives: 0
+test loss: 0.19984070956707
+#####AX-91459619#######
+#####AX-90659422#######
