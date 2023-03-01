@@ -298,13 +298,13 @@ def main():
                 related_snps.append(snp)
                 save_df = pd.DataFrame(related_snps)
                 print(save_df)
-                save_df.to_csv("possiable_related_snps.csv")
+                save_df.to_csv("possiable_related_snps_log.csv")
         except:
             continue
-        test_result[snp] = [loss,TN,FP,TP,FN]
+        test_result[snp] = [loss[0],TN,FP,TP,FN]
         # save to csv file
         test_result_df=pd.DataFrame.from_dict(test_result, orient='index',
                                columns=['test_loss','TN','FP','TP','FN'])
-        test_result_df.to_csv("LSTM_test_result.csv")
+        test_result_df.to_csv("LSTM_test_result_log.csv")
 if __name__ == '__main__':
     main()
