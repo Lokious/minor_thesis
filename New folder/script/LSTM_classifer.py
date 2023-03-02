@@ -306,5 +306,6 @@ def main():
         test_result_df=pd.DataFrame.from_dict(test_result, orient='index',
                                columns=['test_loss','TN','FP','TP','FN'])
         test_result_df.to_csv("LSTM_test_result_log.csv")
+
 if __name__ == '__main__':
     main()

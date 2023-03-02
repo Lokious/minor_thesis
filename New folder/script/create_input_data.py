@@ -109,7 +109,7 @@ def create_input_data(snp_df:str="../data/chosen_snps_map.csv",geno_df:str="../d
     selected_snp_df = selected_snp_df.drop(columns=drop_index)
     # print(len(selected_snp_df.columns))
 
-    # read traits df without spatial correction
+    # read traits df
     traits_df = pd.read_csv(trait_file
         , header=0,
         index_col=0)
