@@ -1,0 +1,6 @@
+_1: the noise part is 0.05 * sqrt(t)
+_2: the noise part is 1 * sqrt(t)
+_3: the noise part is t generate 300 while NA is dropped so only 100 left, same number as before. for this one the model does not perform well even i tried with different lr and epoch.
+
+#    learning_rate = 0.05 #
+    num_epochs = 200
