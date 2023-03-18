@@ -1,0 +1,1 @@
+inputsize torch.Size([385, 46, 6]) remove replicate genotypes

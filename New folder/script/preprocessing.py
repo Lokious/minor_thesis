@@ -161,7 +161,7 @@ def get_colors(num_colors):
         colors.append(colorsys.hls_to_rgb(hue, lightness, saturation))
     return colors
 
-def remove_no_effect_SNPs(geno_df:pd.DataFrame)->int:
+def remove_no_effect_SNPs(geno_df:pd.DataFrame,imbalanced_control=False)->int:
 
     """
     remove thoses SNPs which is the same among all 955 genotypes
@@ -184,12 +184,18 @@ def remove_no_effect_SNPs(geno_df:pd.DataFrame)->int:
         else:
             percentage = geno_df[snp].value_counts(normalize=True)
             percentage_dictionary[snp] = percentage
+            print(percentage)
+            if imbalanced_control:
+                if percentage<0.4 or percentage>0.6:
+                    geno_df.drop(columns=[snp], inplace=True)
+    print(geno_df.shape)
     # print(percentage_dictionary)
     # print(len(percentage_dictionary.keys()))
 
+
     #save the df after remove snps which is the same for all
-    with open ("../data/remove_no_effect_snps","wb") as dillfile:
-        dill.dump(geno_df,dillfile)
+    # with open ("../data/remove_no_effect_snps","wb") as dillfile:
+    #     dill.dump(geno_df,dillfile)
 
     return 0
 
@@ -485,6 +491,15 @@ def pre_process_for_spline_extract_features(file):
 
     print(new_df_predict)
     return new_df_predict,new_df_deriv,new_df_deriv2
+def choose_snps():
+
+    data_geno_genotype=dill.load(open("../data/data_geno_genotype","rb"))# need large memory if read csv,use dill load previous saved file instead
+    remove_no_effect_SNPs(data_geno_genotype,imbalanced_control=True)
+    #selcet based on distance
+    #data_geno_map= dill.load(open("../data/remove_no_effect_snps", "rb"))
+    #print(data_geno_genotype)
+    #chonsen_snps_mapdf = select_SNPs_based_on_distance(data_geno_map)
+    # chonsen_snps_mapdf.to_csv("../data/chosen_snps_map.csv")
 # class Testreaction_class(unittest.TestCase):
 #
 #     def test0_remove_no_effect_SNPs(self):
@@ -496,7 +511,9 @@ def pre_process_for_spline_extract_features(file):
 #         missing_value_count()
 
 def main():
+    choose_snps()
     #unittest.main()
+    '''
     height_file = "../data/spline_extract_features/height_predict_withp_spline.csv"
     height_predict,height_deriv,height_deriv2 = pre_process_for_spline_extract_features(height_file)
     height_predict.to_csv("../data/spline_extract_features/height_predict_reformat.csv")
@@ -512,17 +529,14 @@ def main():
         "../data/spline_extract_features/la_deriv_reformat.csv")
     la_deriv2.to_csv(
         "../data/spline_extract_features/la_deriv2_reformat.csv")
-
+    '''
 
     #read_rdata_to_csv()
     #data_manual_platform_DH = dill.load(open("../data/data_manual_platform_DH", "rb"))
     #plot_raw_data(data_manual_platform_DH)
     # load genotype data and platform phenotype data (DH)
     #data_geno_genotype=dill.load(open("../data/data_geno_genotype","rb"))
-    # data_geno_map= dill.load(open("../data/data_geno_map", "rb"))
-    # #print(data_geno_genotype)
-    # chonsen_snps_mapdf = select_SNPs_based_on_distance(data_geno_map)
-    # chonsen_snps_mapdf.to_csv("../data/chosen_snps_map.csv")
+
     #calculate_SNPs_relationship(snps_df=data_geno_genotype)
     # data_DH_platform = dill.load(open("../data/image_DHline_data", "rb"))
     #

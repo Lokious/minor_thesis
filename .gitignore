@@ -5,4 +5,5 @@ New folder/script/.RData
 New folder/script/.Rhistory
 New folder/script/*.png
 New folder/result/*png
-
+model_comparision/data/
+model_comparision/*.png

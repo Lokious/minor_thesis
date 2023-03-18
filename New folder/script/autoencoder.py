@@ -138,7 +138,7 @@ def normalization(dataset:torch.tensor)->torch.tensor:
 
     print(dataset.shape)
     from sklearn.preprocessing import StandardScaler,MinMaxScaler
-    scaler = MinMaxScaler((1,3))
+    scaler = StandardScaler()
     timeseries_tensor = []
 
     dataset = torch.permute(dataset, (2, 1, 0))
