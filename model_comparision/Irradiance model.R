@@ -48,11 +48,10 @@ for (i in c(1:301)){
   #Mmax <- runif(1,5000,6000)
   y0 <-runif(1,y0_range[1],y0_range[2])/1000
   d <- expression(r * x * (1 - x/Mmax) ) 
-  noise <- rnorm(1,0,0.25) 
-
-  
-  s <- expression(noise)# idependent NOISE 
-  #s<- expression(0.2*((2*(Mmax-x)/Mmax)*(1-(Mmax-x)/Mmax)))
+  # noise <- rnorm(1,0,0.25) # idependent NOISE 
+  # s <- expression(noise)# idependent NOISE 
+  #s<- expression(0.2*((2*(Mmax-x)/Mmax)*(1-(Mmax-x)/Mmax))) #noise related to biomass
+  s <- expression(0.2*((2*(end.time-t)/end.time)*(1-(end.time-t)/end.time)))# NOISE related to time
   #delta: time step of the simulation,the fixed amount of time by which the simulation advances.
   #N:number of simulation steps.
   # diffusion coefficient: an expression of two variables t and x
@@ -67,10 +66,10 @@ for (i in c(1:301)){
 
 }
 plot(simulated_logistics_data)
-write.csv(df,"simulated_X_data_logistic_time_independent_noise_0.25.csv")
+write.csv(df,"simulated_X_data_logistic_time_dependent_noise_0.2.csv")
 df_Y = data.frame(label_list)
 colnames(df_Y) <- c(1:301)
-write.csv(df_Y,"simulated_label_data_logistic_time_independent_noise_0.25.csv")
+write.csv(df_Y,"data/simulated_data/no_fixed_Max/simulated_label_data_logistic_time_dependent_noise_0.2.csv")
 
 ###generate data from Irradiance model###
 df <- data.frame(matrix(nrow = end.time, ncol = 0))
@@ -80,26 +79,33 @@ fi_list = list()
 s_list = list()
 label_list = list()
 for (i in c(1:301)){
+  simulated_irradiance_logistics_data <- c(0)
+  Mmax<-runif(1,biomass_max_range[1],biomass_max_range[2])/1000
+  print(Mmax)
+
+  print(simulated_irradiance_logistics_data)
   #runif() generates random deviates of the uniform distribution
   r <-runif(1,r_range[1],r_range[2])
   #r<-0.1
-  Mmax<-runif(1,biomass_max_range[1],biomass_max_range[2])/1000
+  
   #Mmax <- runif(1,5000,6000)
   y0 <-runif(1,y0_range[1],y0_range[2])/1000
   #r <- runif(1, 0.1, 0.5)
- 
+  
   a <- runif(1, -0.2, 0.2)
   fi <- runif(1,1/365,182/365)
   while (all((r+a*sin((2*pi/365)*time.vec+fi))>0)==FALSE & all((r+a*sin((2*pi/365)*time.vec+fi))<r_range[2])==FALSE) {
     r <-runif(1,r_range[1],r_range[2])
     a <- runif(1, -0.2, 0.2)
-    fi <- runif(1,-.2,0.2)
+    fi <- runif(1,1/365,182/365)
   }
-    
+  
   d_irradiance <- expression((r+a*sin((2*pi/365)*t+fi)) * x * (1 - x/Mmax))
+  # noise <- rnorm(1,0,0.25)# idependent NOISE  
+  # s_irradiance <- expression(noise)# idependent NOISE 
   #s_irradiance <- expression(0.2*((2*(Mmax-x)/Mmax)*(1-(Mmax-x)/Mmax)))# NOISE related to biomass
-  noise <- rnorm(1,0,0.25) 
-  s_irradiance <- expression(noise)# idependent NOISE 
+  #s_irradiance <- expression(0.2*((2*(end.time-t)/end.time)*(1-(end.time-t)/end.time)))# NOISE related to time
+  s_irradiance <- expression(0*x)
   #delta: time step of the simulation,the fixed amount of time by which the simulation advances.
   #N:number of simulation steps.
   # diffusion coefficient: an expression of two variables t and x
@@ -112,19 +118,21 @@ for (i in c(1:301)){
   a_list <- append(a_list,a)
   fi_list <- append(fi_list,fi)
   label_list <- append(label_list,'1')
-  # if (sum(is.na(simulated_irradiance_logistics_data))==0){
-  # fit <- sm.spline(time.vec,simulated_irradiance_logistics_data)
-  # derivative <- predict(fit,time.vec,nderiv=1)
-  # plot(derivative)
-  # plot(time.vec,simulated_irradiance_logistics_data)
-  # lines(fit, col = "red")}
-  # #dev.off() 
+
+  
+  if (sum(is.na(simulated_irradiance_logistics_data))==0){
+  fit <- sm.spline(x=time.vec,y=simulated_irradiance_logistics_data)
+  derivative <- predict(fit,time.vec,nderiv=1)
+  plot(derivative)
+  plot(time.vec,simulated_irradiance_logistics_data)
+  lines(fit, col = "red")}
+  #dev.off()
 }
 plot(simulated_irradiance_logistics_data)
-write.csv(df,"simulated_X_data_irradiance_time_independent_noise_0.25.csv")
+write.csv(df,"simulated_X_data_irradiance_time_dependent_noise_0.2.csv")
 df_Y = data.frame(label_list)
 colnames(df_Y) <- c(1:301)
-write.csv(df_Y,"simulated_label_data_irradiance_time_independent_noise_0.25.csv")
+write.csv(df_Y,"data/simulated_data/no_fixed_Max/simulated_label_data_irradiance_time_dependent_noise_0.2.csv")
 
 # ################temperature model#############
 # df <- data.frame(matrix(nrow = end.time, ncol = 0))

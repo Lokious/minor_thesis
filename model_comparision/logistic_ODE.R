@@ -10,101 +10,147 @@ library('pspline')
 #set current directory as working directory
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 getwd()
+
+# #load data and split based on location
+# for (loc_name in c("Emerald","Merredin","Narrabri","Yanco")){
+#   mergerddata <- read.csv("data/biomass.csv",row.names = 1,header= TRUE)
+#   Emerald_data <- subset(mergerddata,mergerddata$loc==loc_name)
+#   row.names(Emerald_data) <- NULL
+#   file_name <- sprintf("data/%s_data.csv", loc_name)
+#   write.csv(Emerald_data,file_name)
+# }
+
+theFiles <- list.files("data/",pattern="*.txt",full.names = TRUE)
+# list the files
+theFiles
+theFiles <- sample(theFiles, 100, replace=TRUE)
+theFiles <-c('data/Emerald2002g007.txt')
 ############################test for Logistic model#############################
-#load data
-data = read.table("data/Emerald1983g048.txt")
-fit <- smooth.Pspline(data$das, data$biomass)
+logistic_Fit_parameters = data.frame()
+index <- 0
+for (textfile in theFiles){
+  data = read.table(textfile)
+  # fit <- smooth.Pspline(data$das, data$biomass)
+  # 
+  # plot(data$das, data$biomass)
+  # lines(fit, col = "blue")
+  #define function
+  logistic <- function(t, y, parms) {
+    with(as.list(parms,y,t), {
+      dMdt <- r * y * (1 - y / Mmax)
+      return(list(dMdt))
+    })
+  }
+  
+  #x and y
+  M <-as.numeric(data$biomass)
+  t <- as.numeric(data$das)
+  y0 <- c(M = M[1])
+  y0
+  parms <- c(r = 0.1, Mmax = max(M))
+  # #use desolve to fit the data
+  # fit <- ode(y = y0, times = t, func = logistic, parms = parms)
+  # parms
+  # 
+  plot(t, M, pch = 16, xlab = "Time", ylab = "M")
+  # lines(fit, col = "red")
+  
+  #the first column of contains the name of the observed variable, if we only have biomass it is 'M' here
+  biomass_time_df <-data.frame(name=rep("M",length(t)),time=unlist(t),M=unlist(M))
+  
+  #the function to minimize
+  ModelCost <- function(parms) {
+    modelout <- as.data.frame(ode(y = y0, times = t, func = logistic, parms = parms))
+    modCost(model=modelout,obs=biomass_time_df,y="M")  # object of class modCost
+  }
+  
+  Fit <- modFit(f = ModelCost, p = parms, method = "Port") #fit the curve which minimize the ModelCost
+  summary(Fit)
+  out <- ode(y = y0, func = logistic, parms = Fit$par,
+             times = t)
 
-plot(data$das, data$biomass)
-lines(fit, col = "blue")
-#define function
-logistic <- function(t, y, parms) {
-  with(as.list(parms,y), {
-    dMdt <- r * y * (1 - y / Mmax)
-    return(list(dMdt))
-  })
+  logistic_Fit_parameters <- rbind(logistic_Fit_parameters, c(Fit$par,y0))
+  lines(out, col = "blue")
 }
-
-#x and y
-M <-as.numeric(data$biomass)
-t <- as.numeric(data$das)
-
-y0 <- c(M = M[1])
-y0
-parms <- c(r = 0.1, Mmax = max(M))
-# #use desolve to fit the data
-# fit <- ode(y = y0, times = t, func = logistic, parms = parms)
-# parms
-# 
-plot(t, M, pch = 16, xlab = "Time", ylab = "M")
-# lines(fit, col = "red")
-
-#the first column of contains the name of the observed variable, if we only have biomass it is 'M' here
-biomass_time_df <-data.frame(name=rep("M",length(t)),time=unlist(t),M=unlist(M))
-
-#the function to minimize
-ModelCost <- function(parms) {
-  modelout <- as.data.frame(ode(y = y0, times = t, func = logistic, parms = parms))
-  modelout
-  modCost(model=modelout,obs=biomass_time_df,y="M")  # object of class modCost
-}
-
-Fit <- modFit(f = ModelCost, p = parms, method = "Port") #fit the curve which minimize the ModelCost
-summary(Fit)
-out <- ode(y = y0, func = logistic, parms = Fit$par,
-           times = t)
 Fit$par
-lines(out, col = "blue")
+max(M)
+colnames(logistic_Fit_parameters) <- c('r','Mmax','y0')
+
+#save fit parameters, use as the parameters for genrate the data
+write.csv(logistic_Fit_parameters,"logistics_fit_parameters.csv")
+
 ########################seems the code works for logistic ODE for one genotype and one environment###############
 
 ############################test for Irradiance model#############################
+# something wong when estimate best parameters, check this link similar problem as this
+# https://stackoverflow.com/questions/67478946/in-r-fme-desolve-sir-fitting-time-varying-parameters
+#load data
+irradiance_Fit_parameters = data.frame()
+index <- 0
+for (textfile in theFiles){
+  
+  print(index)
+  index = index+1
+  data = read.table(textfile)
+  #inilize parameters and plot curve
+  M <-as.numeric(data$biomass)
+  t <- as.numeric(data$das)
+  y0 <- c(M = M[1])
+  biomass_time_df <-data.frame(name=rep("M",length(t)),time=unlist(t),M=unlist(M))
+  plot(t, M, pch = 16, xlab = "Time", ylab = "M")
+  irradiance_parms <- c(r = 0.15, Mmax = max(M),a=-0.1,fi=60/365)
+  #define function
+  Irradiance_model <- function(t, y, irradiance_parms) {
+    with(as.list(irradiance_parms,y,t), {
+      dMdt <- (r+a*sin((2*pi/365)*t+fi))* y * (1 - y / Mmax)
+      return(list(dMdt))
+    })
+  }
+  
+  #the function to minimize
+  Irradiance_ModelCost <- function(parms) {
+    modelout <- as.data.frame(ode(y = y0, times = t, func = Irradiance_model, parms = irradiance_parms))
 
-irradiance_parms <- c(r = 0.1, Mmax = max(M),a=0,fi=1)
-#define function
-Irradiance_model <- function(t, y, irradiance_parms) {
-  with(as.list(irradiance_parms,y), {
-    dMdt <- (r+a*sin((2*pi/365)*t+fi))* y * (1 - y / Mmax)
-    return(list(dMdt))
-  })
+    modCost(model=modelout,obs=biomass_time_df,y="M")  # object of class modCost
+  }
+  
+  irradiance_Fit <- modFit(f = Irradiance_ModelCost, p = irradiance_parms, method = "Nelder-Mead") #fit the curve which minimize the ModelCost
+  #summary(irradiance_Fit) # for Port method: In summary.modFit(Fit) : Cannot estimate covariance; system is singular
+  irradiance_out <- ode(y = y0, func = Irradiance_model, parms = irradiance_Fit$par,
+             times = t)
+  irradiance_Fit$par
+  irradiance_Fit_parameters <- rbind(irradiance_Fit_parameters, irradiance_Fit$par)
+  lines(irradiance_out, col = "green")
 }
-
-#the function to minimize
-Irradiance_ModelCost <- function(parms) {
-  modelout <- as.data.frame(ode(y = y0, times = t, func = Irradiance_model, parms = irradiance_parms))
-  modelout
-  modCost(model=modelout,obs=biomass_time_df,y="M")  # object of class modCost
-}
-
-irradiance_Fit <- modFit(f = Irradiance_ModelCost, p = irradiance_parms) #fit the curve which minimize the ModelCost
-summary(Fit) # for Port method: In summary.modFit(Fit) : Cannot estimate covariance; system is singular
-irradiance_out <- ode(y = y0, func = Irradiance_model, parms = irradiance_Fit$par,
-           times = t)
-Fit$par
-lines(irradiance_out, col = "green")
 ###############################################################################
+irradiance_Fit$par
+############################test for temperature model#############################
 
-############################test for Irradiance model#############################
-
-irradiance_parms <- c(r = 0.1, Mmax = max(M),a=0,fi=1)
+tempreture_parms <- c(r = 0.1, Mmax = max(M))
 #define function
-tempreture_model <- function(t, y, irradiance_parms) {
-  with(as.list(irradiance_parms,y), {
-    dMdt <- (r+a*sin((2*pi/365)*t+fi))* y * (1 - y / Mmax)
+tempreture_model <- function(t, tempreture,y, tempreture_parms) {
+  with(as.list(tempreture_parms,y,tempreture,t), {
+    TAL= 20000
+    TL = 292
+    TAH = 60000
+    TH = 303
+    Ft <- (1+exp(TAL/tempreture -TAL/TL) + exp(TAH/TH -TAH/tempreture))^-1
+    dMdt <- (r*Ft)* y * (1 - y / Mmax)
     return(list(dMdt))
   })
 }
 
 #the function to minimize
-Irradiance_ModelCost <- function(parms) {
-  modelout <- as.data.frame(ode(y = y0, times = t, func = tempreture_model, parms = irradiance_parms))
+Tempreture_ModelCost <- function(tempreture_parms) {
+  modelout <- as.data.frame(ode(y = y0, times = t, func = tempreture_model, parms = tempreture_parms))
   modelout
   modCost(model=modelout,obs=biomass_time_df,y="M")  # object of class modCost
 }
 
-irradiance_Fit <- modFit(f = Irradiance_ModelCost, p = irradiance_parms) #fit the curve which minimize the ModelCost
+tempreture_Fit <- modFit(f = Tempreture_ModelCost, p = tempreture_parms) #fit the curve which minimize the ModelCost
 summary(Fit) # for Port method: In summary.modFit(Fit) : Cannot estimate covariance; system is singular
-irradiance_out <- ode(y = y0, func = tempreture_model, parms = irradiance_Fit$par,
+tempreture_out <- ode(y = y0, func = tempreture_model, parms = tempreture_Fit$par,
                       times = t)
-Fit$par
-lines(irradiance_out, col = "green")
+
+lines(tempreture_out, col = "orange")
 ###############################################################################
