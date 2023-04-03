@@ -1,3 +1,5 @@
+import random
+
 import numpy
 import pandas as pd
 import numpy as np
@@ -5,8 +7,10 @@ import glob
 import dill
 import unittest
 import torch
+import torch.nn.functional as F
 from sklearn.model_selection import train_test_split
 import lstm_regression
+
 def read_reformat(file_directory:str,file_name_end_with=".txt"):
     files = glob.glob("{}*{}".format(file_directory,file_name_end_with))
     print(files)
@@ -53,10 +57,7 @@ def read_and_reformat_for_clustering(file:str="data/Emerald_data.csv"):
             time_list = list(plant_df.index)
         plantid_list.append((str(plant_df["Env"].unique()[0])+"."+str(plant_df["geno"].unique()[0])+"."+str(i)))
     #print(length)
-
-
     new_df_Biomass = pd.DataFrame(index=time_list, columns=plantid_list)
-
     input_data.set_index(['Env','geno','das'],inplace=True)
 
     print(input_data)
@@ -78,27 +79,33 @@ def read_and_reformat_for_clustering(file:str="data/Emerald_data.csv"):
     return new_df_Biomass
 
 
-def read_df_create_input_data(inputX,inputY):
+def read_df_create_input_data(inputX,inputY,random_select=False):
     """
     This function is to read the X.csv and y.csv and convert it to torch.tensor
     :param inputX: the name and directory of x
     :param inputY: the name and directory of y
-    :return: tensor x and y
+    :return: tensor x and y x.shape(n_seq,seq_len,n_features) y.shape(feature,n_seq)
     """
     X_df = pd.read_csv(inputX,index_col=0)
     Y_df = pd.read_csv(inputY,index_col=0)
-    print(X_df)
-    print(Y_df)
-    # the column is related to number of samples, which should
+    print(X_df,Y_df)
+    # the column is related to number of samples, which should be the same length
     assert len(X_df.columns) == len(Y_df.columns)
     Y_df.columns = X_df.columns
+    #replace inf and -inf as NA
+    X_df.replace([np.inf, -np.inf], np.nan, inplace=True)
+    #drop na
     drop_na_column = X_df.columns[X_df.isna().any()].tolist()
     X_df.dropna(axis=1,inplace=True)
     Y_df = Y_df.drop(columns=drop_na_column)
+
     Y_df = Y_df.T
     #print(X_df.isna().sum().sum())
+    if random_select:
+        X_df = X_df.iloc[:, :200]
+        Y_df = Y_df.iloc[:200, :]
 
-    import torch
+
     sequences = X_df.astype(np.float32).to_numpy().tolist()
     X_tensor = torch.stack(
         [torch.tensor(s).unsqueeze(1).float() for s in sequences])#[118, 101, 1]
@@ -124,7 +131,7 @@ def prepatre_train_test_for_lstm_regression(x="simulated_X_data_3.csv",y="simula
 
     x_train, scaler_X_train = lstm_regression.normalization(x_train)
     x_test, scaler_X_test = lstm_regression.normalization(x_test)
-    print(X)
+    #print(X)
     return x_train, x_test, y_train, y_test
 
 
@@ -132,11 +139,17 @@ def prepare_train_test_for_lstm_forecasting_multiple_dimension_label(x="simulate
 
     #read time series df
     X_df = pd.read_csv(x,index_col=0)
+    #print(X_df)
     if x.startswith("simulated"):
         X_df.dropna(axis=1,inplace=True)
     else:
-        X_df.dropna(axis=0, inplace=True)
-    print(X_df)
+        #fill na at the start with 0, and fill na at the end as maximum
+        X_df = X_df.fillna(method='ffill')
+        #print(X_df.T.isna().sum())
+        X_df = X_df.fillna(0.0)
+
+        #X_df.dropna(axis=1, inplace=True)
+    #print(X_df)
     # assert no NA left
     assert X_df.isna().sum().sum() == 0
     # plt.plot(X_df.iloc[:,2])
@@ -147,9 +160,9 @@ def prepare_train_test_for_lstm_forecasting_multiple_dimension_label(x="simulate
     test_length = int(time_steps * label_size)
     print(test_length)
     train_length = time_steps - test_length
-
-    Y_df = X_df.iloc[train_length:,:]
-    X_df = X_df.iloc[0:train_length-1,:]
+    Y_df = X_df
+    # Y_df = X_df.iloc[train_length:,:]
+    # X_df = X_df.iloc[0:train_length-1,:]
     #print(Y_df)
     sequences_X = X_df.astype(np.float32).to_numpy().tolist()
     X_tensor = torch.stack(
@@ -192,7 +205,7 @@ def prepare_train_test_for_lstm_forecasting_multiple_dimension_label(x="simulate
     print(y_test.shape)
 
     #float will return error, sonver to int
-    check_scaler(scaler_Y_train, y_train, y_train_unscale)
+    #check_scaler(scaler_Y_train, y_train, y_train_unscale)
     return x_train, x_test, y_train, y_test, scaler_Y_train,scaler_X_train,scaler_Y_test,scaler_X_test,y_train_unscale
 
 def prepare_train_test_for_lstm_forecasting_one_dimension_label(x="simulated_X_data_1.csv", label_size=0.3,test_size=0.2):
@@ -215,7 +228,7 @@ def prepare_train_test_for_lstm_forecasting_one_dimension_label(x="simulated_X_d
 
     Y_df = X_df.iloc[train_length:,:]
     X_df = X_df.iloc[0:train_length-1,:]
-    print(Y_df)
+    #print(Y_df)
     sequences_X = X_df.astype(np.float32).to_numpy().tolist()
     X_tensor = torch.stack(
         [torch.tensor(s).unsqueeze(1).float() for s in sequences_X])#[118, 101, 1]
@@ -256,21 +269,198 @@ def prepare_train_test_for_lstm_forecasting_one_dimension_label(x="simulated_X_d
 
     return x_train, x_test, y_train, y_test
 
-def check_scaler(scaler, scaled_data:numpy.array, original_data:torch.tensor):
+def check_scaler(scalers, scaled_data:numpy.array, original_data:torch.tensor):
 
-    unscale = scaler.inverse_transform(scaled_data)
-    unscale = torch.stack(
-        [torch.tensor(s).float() for s in unscale])
-    #float will return error, sonver to int
-    print("###test if unsalced data is equal to the inverse transfer data###")
-    print("raise error if False check")
-    # print(torch.eq(unscale, original_data))
-    # print(torch.sum(torch.eq(unscale, original_data)).item() / original_data.nelement())
-    assert torch.sum(torch.eq(unscale,
-                              unscale)).item() / original_data.nelement() == 1.0
+    try:
+        scaler = scalers[0]
+        inverse_scale = scaler.inverse_transform(scaled_data)
+        inverse_scale = torch.stack(
+            [torch.tensor(s).float() for s in inverse_scale])
+
+        print("###test if unsalced data is equal to the inverse transfer data###")
+        print("raise error if False check")
+        assert torch.sum(torch.eq(inverse_scale,
+                                  original_data)).item() / original_data.nelement() == 1.0
+    except:
+        inverse_scale_list = []
+        dataset = torch.permute(scaled_data, (2, 1, 0))
+        tensors = list(dataset)
+
+        for i,feature_tensor in enumerate(tensors):
+            print(feature_tensor.shape)
+            scaler = scalers[i]
+            #perform inverse_scale for each feature in X
+            inverse_scale = scaler.inverse_transform(feature_tensor.detach().cpu().numpy())
+            inverse_scale = torch.stack(
+                [torch.tensor(s).float() for s in inverse_scale])
+            print(inverse_scale)
+            inverse_scale_list.append(inverse_scale)
+        print(
+            "###test if unsalced data is equal to the inverse transfer data###")
+        print("raise error if False check")
+        inverse_scale = torch.stack(inverse_scale_list)
+        unscaled_dataset = torch.permute(inverse_scale, (2, 1, 0))
+        # the assert error occure because of float
+
+        print(torch.sum(torch.eq(unscaled_dataset, original_data)).item() / original_data.nelement())
+        assert torch.sum(torch.eq(unscaled_dataset,original_data)).item() / original_data.nelement() == 1.0
+
+def combine_data_for_model_classification(datas=[("simulated_X_data_irradiance.csv", "simulated_label_data_irradiance.csv")], test_size=0.2,random_select=True):
+
+    try:
+        X = []
+        Y = []
+        for data_name in datas:
+            """ loop through datasets generate by different SDE model"""
+            x_name = data_name[0]
+            y_name = data_name[1]
+            X_tensor = dill.load(open(x_name,"rb"))
+
+            print("X shape before combine data from different sde{}".format(X_tensor.shape))
+            tensor_lable = dill.load(open(y_name,"rb"))
+
+            if random_select:
+                indexes = random.sample(range(X_tensor.shape[0]),200)
+                X_tensor = X_tensor[indexes,:,:]
+                tensor_lable = tensor_lable[:,indexes]
+                tensor_lable = torch.permute(tensor_lable,(1,0))
+                print(X_tensor.shape)
+
+            X.append(X_tensor)
+            Y.append(tensor_lable)
+    except:
+        print("inputs are csv file")
+        X = []
+        Y = []
+        for data_name in datas:
+            """ loop through datasets generate by different SDE model"""
+            x_name = data_name[0]
+            y_name = data_name[1]
+            X_tensor, tensor_lable = read_df_create_input_data(x_name, y_name,
+                                                               random_select=True)
+            X.append(X_tensor)
+            Y.append(tensor_lable)
+    # concat tensor from three models
+    X_tensor = torch.cat(X, 0)
+    Y_tensor = torch.cat(Y, 0)
+
+    Y_tensor = one_hot_encoding_for_multiclass_classification(Y_tensor)
+    # print(X_tensor.shape)
+    # print(Y_tensor.shape)
+    x_train, x_test, y_train, y_test = train_test_split(X_tensor, Y_tensor,
+                                                        test_size=test_size,
+                                                        random_state=123)
+    # save for test scaler
+    x_train_unscale = copy.deepcopy(x_train)
+
+    x_train, scaler_X_train = lstm_regression.normalization(x_train)
+    x_test, scaler_X_test = lstm_regression.normalization(x_test)
+    # float will return error, sonver to int
+    check_scaler(scaler_X_train, x_train, x_train_unscale)
+    print(x_train,y_train)
+    return x_train, x_test, y_train, y_test,  scaler_X_train, scaler_X_test
+
+def one_hot_encoding_for_multiclass_classification(Y_tensor):
+    print("before one hot encoding")
+
+    #check the number of label
+    label_number = len(torch.unique(Y_tensor))
+    print(label_number)
+    one_hot_list = []
+    for y in Y_tensor:
+        #covert to int use as index
+        y=int(y.item())
+        one_hot_code = torch.zeros(label_number)
+        one_hot_code[y] = 1
+        one_hot_list.append(one_hot_code)
+    print(one_hot_list)
+    #torch stack increase the demension, while torch cat does not
+    one_hot_encoding = torch.stack(one_hot_list)
+
+    return one_hot_encoding
+
+
+def create_tensor_dataset(dfs):
+    """
+    create 3-dimensions tensor from a list of dataframes
+    :param dfs: list, the row of df is sequence length, the columns are samples
+    :return: X_shape(features,seq_length,samples_number);Y_shape(1,samples_number)
+    """
+
+    datasets = []
+    for df in dfs:
+        sequences = df.astype(np.float32).to_numpy().tolist()
+        dataset = torch.stack([torch.tensor(s).unsqueeze(1).float() for s in sequences])
+        datasets.append(dataset)
+
+    #remove the last dimention
+    tensor_dataset = torch.squeeze(torch.stack(datasets,dim=0))
+    # print("shape of created dataset:")
+    # print(tensor_dataset.shape)
+
+    n_features, seq_len, n_seq = tensor_dataset.shape
+    print("seq_len{}".format(seq_len))
+    return tensor_dataset,n_features
+
+def combine_multiple_features_to_inputX(input_features_files:list,input_Y_file:str,save_directory:str,x_name:str,noise_type:str):
+    """
+    read csv file,
+    :param input_features_files:
+    :param save_directory:
+    :param x_name:
+    :return:
+    """
+    dfs = []
+    for feature_file in input_features_files:
+        df = pd.read_csv(feature_file,header=0,index_col=0)
+        dfs.append(df)
+
+    tensor_X, n_features = create_tensor_dataset(dfs)
+    print(tensor_X.shape)
+    # creating tensor from targets_df
+    label_df = pd.read_csv(input_Y_file,index_col=0,header=0)
+    tensor_lable = torch.tensor(label_df.values.astype('double'))
+
+    print(tensor_lable.shape)
+    # the number represent the number in old order, and after that will place it
+    # as the new order for example: permute(2,0,1)
+    # (a,b,c) -> (c,a,b)
+    tensor_X = torch.permute(tensor_X, (2, 1, 0)) # (n_seq,seq_len,n_features)
+
+    #creat folder to save input files
+    isExist = os.path.exists("{}/".format(save_directory))
+    if not isExist:
+        print("create directory {}".format(save_directory))
+        os.makedirs("{}/".format(save_directory))
+    print("saving files...")
+    with open("{}/simulated_X_data_{}_{}".format(save_directory,x_name,noise_type),"wb") as dillfile1:
+        dill.dump(tensor_X,dillfile1)
+    with open("{}/simulated_label_data_{}_{}".format(save_directory,x_name,noise_type),"wb") as dillfile2:
+        dill.dump(tensor_lable,dillfile2)
+
+    return tensor_X,tensor_lable,n_features
+
+
+def save_combined_feature_tensors_as_dill_files():
+    noises = ["time_dependent_noise_0.2.csv",
+              "time_independent_noise_0.25.csv",
+              "biomass_dependent_noise_0.2.csv", "without_noise.csv"]
+    models = ["irradiance_", "logistic_", "Allee_"]
+    input_X_list = [
+        "data/simulated_data/fixed_Max_range_of_parameters/simulated_X_data_",
+        "data/simulated_data/fixed_Max_range_of_parameters/simulated_derivative_data_"]
+    Y_name = "data/simulated_data/fixed_Max_range_of_parameters/simulated_label_data_"
+    for noise in noises:
+        for model in models:
+            input_X_list_new = [(x + model + noise) for x in input_X_list]
+            Y_name_new = Y_name + model + noise
+            combine_multiple_features_to_inputX(
+                input_features_files=input_X_list_new, input_Y_file=Y_name_new,
+                save_directory="data/simulated_data/fixed_Max_range_of_parameters/",
+                x_name=model.replace("_", ""), noise_type=noise.split(".csv")[0])
+
 def main():
-    prepare_train_test_for_lstm_forecasting_multiple_dimension_label(x="simulated_X_data_2.csv",
-                                            label_size=0.2)
+    save_combined_feature_tensors_as_dill_files()
     #unittest.main()
     #read_reformat("./data/")
     # for name in ["Merredin","Narrabri","Yanco"]:

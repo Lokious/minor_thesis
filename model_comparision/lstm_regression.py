@@ -29,25 +29,37 @@ def normalization(dataset:torch.tensor)->torch.tensor:
     #print(dataset.shape)
     tensors = list(dataset)
     # print(tensors)
+    scalers =[]
     for feature_tensor in tensors:
+        # due to percision issue, there will be a slightly difference between the
+        # original and scaler.inverse_transformed data, use double() to reduce the difference,
+        # However, it may still happen.
         # print("size of the input of scaler")
         # print(feature_tensor.shape)
         scaler = scaler.fit(feature_tensor)
-        print("shape before scaling:{}".format(feature_tensor.shape))
+        scalers.append(copy.deepcopy(scaler)) ##save object, remember deepcopoy!
+        #print("shape before scaling:{}".format(feature_tensor.shape))
         # normalize the dataset and print
         standardized = scaler.transform(feature_tensor)
         #print(standardized.shape)
-        standardized = torch.stack([torch.tensor(s).float() for s in standardized])
+        standardized = torch.stack([torch.tensor(s).double() for s in standardized])
         timeseries_tensor.append(standardized)
-        # put time step at the first dimention
+        #unscale to check the scaling result
+        scale_inverse = scaler.inverse_transform(standardized)
+
+        scale_inverse = torch.stack([torch.tensor(s).double() for s in scale_inverse])
+
+        print("check inside normalization")
+        print(torch.sum(torch.eq(feature_tensor, scale_inverse)).item() / feature_tensor.nelement())
     timeseries_tensor = torch.stack(timeseries_tensor)
     # print("before permute")
     # print(timeseries_tensor.shape)
+    # put time step at the first dimention
     dataset = torch.permute(timeseries_tensor, (2, 1, 0))  # (time step, number of sequences, inputsize(3))
 
     # print("after normalize")
     #print(dataset.shape)
-    return dataset,scaler
+    return dataset,scalers
 
 class LSTM_paramter_regression(nn.Module):
 
@@ -98,12 +110,13 @@ class LSTM_forcasting(nn.Module):
     def __init__(self, input_size, hidden_size, num_layers=2, dropout=0.1,output_size=28):
         super().__init__()
         self.input_size = input_size
+        self.out_size = output_size
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         self.lstm1 = nn.LSTM(input_size=input_size, hidden_size=hidden_size,num_layers=num_layers,
                             dropout=dropout)
 
-        self.fc = nn.Linear(hidden_size,out_features=output_size)
+        self.fc = nn.Linear(in_features=hidden_size,out_features=output_size)
 
     def forward(self, x):
         # run when we call this model
@@ -121,8 +134,6 @@ class LSTM_forcasting(nn.Module):
         output_1, _ = self.lstm1(x, (h0, c0))
         # take the output of the last time step, feed it in to a fully connected layer
         output = self.fc(output_1[-1, :, :])
-
-
         return output
 
     def init_network(self):
@@ -207,7 +218,7 @@ def training(model, x, y, batch_size,epoch:int,out_fig="lstm_result_for_logistic
             1, 0, 2))  # change to (seq_length, batch_size,input_size)
 
             # Forward pass
-            predict_outputs = model(inputs)
+            predict_outputs = model(inputs.float())
             # predict_outputs = predict_outputs.float()
             targets = targets.float()
             loss = criterion(predict_outputs, targets)
@@ -247,15 +258,7 @@ def training(model, x, y, batch_size,epoch:int,out_fig="lstm_result_for_logistic
             print(y)
             print("predict_y_shape {}".format(predict_outputs.shape))
             print("true y_shape {}".format(y.shape))
-            # plt.plot(predict_outputs[0],"-r")
-            # plt.plot(y[0],"-g")
-            # plt.title("r true and prediction(lr={},epoch={})".format(learning_rate,num_epochs))
-            # plt.ylabel("r")
-            # plt.xlabel("samples")
-            #
-            # plt.xticks(list(range(1,21)))
-            # plt.savefig(out_fig)
-            # plt.show()
+            plot_r_predict_against_true(predict_outputs, y,"train")
 
     return model,predict_outputs
 
@@ -267,11 +270,54 @@ def test_model(x,y,model,out_fig="lstm_result_for_logistic_model_prediction/lstm
         outputs = model(x.float())
         print("predict_y_shape {}".format(outputs.shape))
         print("true y_shape {}".format(y.shape))
-        # print(outputs )
-        # print(y )
-        # plt.plot(outputs,"r")
-        # plt.plot(y,"g")
-        # plt.savefig(
-        #     out_fig)
-        # plt.show()
+        plot_r_predict_against_true(outputs, y,"test")
     return outputs
+
+
+def plot_r_predict_against_true(outputs,y,title="train"):
+    """
+    scatter plot for r true and predict, use a line to connect true and predict value
+    :param outputs:
+    :param y:
+    :param title:
+    :return:
+    """
+
+    outputs = outputs.flatten()
+    predict_r = outputs.tolist()
+    y = y.flatten()
+    true_r = y.tolist()
+    from sklearn.metrics import mean_squared_error
+    mse = mean_squared_error(predict_r,true_r)
+    print("{}MSE".format(title,mse))
+    x = list(range(len(predict_r)))
+    from matplotlib import collections as matcoll
+    y_tuple = list(zip(predict_r, true_r))
+
+    lines = []
+    for i, j in zip(x, y_tuple):
+        pair = [(i, j[0]), (i, j[1])]
+        lines.append(pair)
+
+    linecoll = matcoll.LineCollection(lines, colors='k')
+    from matplotlib.ticker import MaxNLocator
+
+    fig, ax = plt.subplots()
+
+    ax.plot(x, [i for (i, j) in y_tuple], 'rs', markersize=4,label="predict")
+    ax.plot(x, [j for (i, j) in y_tuple], 'bo', markersize=4,label="true")
+    ax.add_collection(linecoll)
+    ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+    plt.plot((x, x), ([i for (i, j) in y_tuple], [j for (i, j) in y_tuple]), c='black')
+    plt.ylabel("r")
+    plt.legend(loc='best')
+    plt.xlabel("samples")
+    plt.title("{} result MSE:{:.2}".format(title,mse))
+    # plt.xticks(list(range(y.shape[0])))
+    plt.show()
+
+def main():
+    model = LSTM_forcasting(input_size=1,hidden_size=2,output_size=3)
+
+if __name__ == '__main__':
+    main()
