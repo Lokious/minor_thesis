@@ -105,7 +105,7 @@ for (i in c(1:301)){
   # s_irradiance <- expression(noise)# idependent NOISE 
   #s_irradiance <- expression(0.2*((2*(Mmax-x)/Mmax)*(1-(Mmax-x)/Mmax)))# NOISE related to biomass
   #s_irradiance <- expression(0.2*((2*(end.time-t)/end.time)*(1-(end.time-t)/end.time)))# NOISE related to time
-  s_irradiance <- expression(0*x)
+  s_irradiance <- expression(0*x) #no noise
   #delta: time step of the simulation,the fixed amount of time by which the simulation advances.
   #N:number of simulation steps.
   # diffusion coefficient: an expression of two variables t and x
@@ -122,8 +122,7 @@ for (i in c(1:301)){
   
   if (sum(is.na(simulated_irradiance_logistics_data))==0){
   fit <- sm.spline(x=time.vec,y=simulated_irradiance_logistics_data)
-  derivative <- predict(fit,time.vec,nderiv=1)
-  plot(derivative)
+
   plot(time.vec,simulated_irradiance_logistics_data)
   lines(fit, col = "red")}
   #dev.off()

@@ -37,10 +37,11 @@ y0_range <- c(min(parameters_df$y0),max(parameters_df$y0))
 
 df <- data.frame(matrix(nrow = end.time, ncol = 0))
 derivative_df <- data.frame(matrix(nrow = end.time, ncol = 0))
+smooth_derivative_df<- data.frame(matrix(nrow = length(seq(1, 6, 0.25)), ncol = 0)) #use for saving predicted derivative from spline per 0.25 biomass
 r_list = list()
 s_list = list()
 label_list = list()
-plot(x=0,y=0,xlim = c(0, 7),ylim = c(0.0,0.5))
+plot(x=0,y=0,xlim = c(0, 7),ylim = c(0.0,0.5),xlab="biomass",ylab="derivative")
 for (i in c(1:301)){
   print(i)
   simulated_logistics_data <- NA
@@ -48,15 +49,16 @@ for (i in c(1:301)){
   #only keep the simulated data which doesn't have NA Inf or -Inf
   
   r <-runif(1,r_range[1],r_range[2])
-  Mmax<-runif(1,5900,6100)/1000
+  #Mmax<-runif(1,5900,6100)/1000
+  Mmax <-6
   y0 <- 4.6/1000
   d <- expression(r * x * (1 - x/Mmax) ) 
   
-  # noise <- rnorm(1,0,0.25) # idependent NOISE
-  # s <- expression(noise)# idependent NOISE
-  #s<- expression(0.2*((2*(Mmax-x)/Mmax)*(1-(Mmax-x)/Mmax))) # biomass_dependent_noise_0.2
-  #s <- expression(0.2*((2*(end.time-t)/end.time)*(1-(end.time-t)/end.time)))# time_dependent_noise_0.2
-  s <- expression(0*x)
+  #noise <- rnorm(1,0,0.25) # idependent NOISE
+  s <- expression(0.1)# idependent NOISE
+  # s<- expression(0.2*((2*(Mmax-x)/Mmax)*(1-(Mmax-x)/Mmax))) # biomass_dependent_noise_0.2
+  # s <- expression(0.2*((2*(end.time-t)/end.time)*(1-(end.time-t)/end.time)))# time_dependent_noise_0.2
+  # s <- expression(0*x)
   #delta: time step of the simulation,the fixed amount of time by which the simulation advances.
   #N:number of simulation steps.
   # diffusion coefficient: an expression of two variables t and x
@@ -77,8 +79,12 @@ for (i in c(1:301)){
 
   fit <- sm.spline(x=time.vec,y=simulated_logistics_data)
   derivative <-D1tr(y=simulated_logistics_data, x = time.vec)
+  derivative_fit_spline <- sm.spline(y=c(derivative),x=c(simulated_logistics_data))
+  predicted_derivative <- predict(derivative_fit_spline,x=seq(1, 6, 0.25))
+  smooth_derivative_df[ , ncol(derivative_df) + 1] = predicted_derivative
   derivative_df[ , ncol(derivative_df) + 1] = derivative
   lines(y=c(derivative),x=c(simulated_logistics_data),type='l', col = "green",xlim = c(0, 7),ylim = c(0.0,1.0))
+  lines(derivative_fit_spline, col = "darkgreen")
   # get the max on y, and matching x value
   derivateMax <- max(derivative)
   x_index <-which.max(derivative)
@@ -86,23 +92,26 @@ for (i in c(1:301)){
   points(y=derivateMax, x = simulated_logistics_data[x_index], col = "green", pch = 19)
   # add vertical line
   abline(v = simulated_logistics_data[x_index], col = "green", lty = "dashed")
-
 }
+
 ####save dataframe to files###
 # write biomass at 120 time steps to csv
-write.csv(df,"data/simulated_data/fixed_Max_range_of_parameters/simulated_X_data_logistic_time_without_noise.csv")
+write.csv(df,"data/simulated_data/fixed_Max_range_of_parameters/simulated_X_data_logistic_time_dependent_noise_0.2.csv")
 # rename label dataframe
 df_Y = data.frame(label_list)
 colnames(df_Y) <- c(1:301)
 # write label dataframe
-write.csv(df_Y,"data/simulated_data/fixed_Max_range_of_parameters/simulated_label_data_logistic_without_noise.csv")
+write.csv(df_Y,"data/simulated_data/fixed_Max_range_of_parameters/simulated_label_data_logistic_time_dependent_noise_0.2.csv")
 # write derivative dataframe to csv
-write.csv(derivative_df,"data/simulated_data/fixed_Max_range_of_parameters/simulated_derivative_data_logistic_without_noise.csv")
+write.csv(derivative_df,"data/simulated_data/fixed_Max_range_of_parameters/simulated_derivative_data_logistic_time_dependent_noise_0.2.csv")
+# write smoothed derivative dataframe to csv
+write.csv(smooth_derivative_df,"data/simulated_data/fixed_Max_range_of_parameters/simulated_smoothed_derivative_data_logistic_time_dependent_noise_0.2.csv")
 
 
 ######generate data from Irradiance model######
 df <- data.frame(matrix(nrow = end.time, ncol = 0))
 derivative_df <- data.frame(matrix(nrow = end.time, ncol = 0))
+smooth_derivative_df<- data.frame(matrix(nrow = length(seq(1, 6, 0.25)), ncol = 0))
 r_list = list()
 a_list = list()
 fi_list = list()
@@ -111,7 +120,8 @@ label_list = list()
 for (i in c(1:301)){
   print(i)
   simulated_irradiance_logistics_data <- c(NA)
-  Mmax<-runif(1,5900,6100)/1000
+  #Mmax<-runif(1,5900,6100)/1000
+  Mmax<-6000/1000
   while((sum(is.na(simulated_irradiance_logistics_data)) !=0) || (tail(simulated_irradiance_logistics_data, n=1)<(Mmax-1))){
     #only keep the simulated data which doesn't have NA Inf or -Inf
     #runif() generates random deviates of the uniform distribution
@@ -121,11 +131,11 @@ for (i in c(1:301)){
     fi <- runif(1,1/365,182/365)
     
     d_irradiance <- expression((r+a*sin((2*pi/365)*t+fi)) * x * (1 - x/Mmax))
-    # noise <- rnorm(1,0,0.25)# idependent NOISE
-    # s_irradiance <- expression(noise)# idependent NOISE
-    #s_irradiance <- expression(0.2*((2*(Mmax-x)/Mmax)*(1-(Mmax-x)/Mmax)))# biomass_dependent_noise_0.2
+    #noise <- rnorm(1,0,0.25)# idependent NOISE
+    s_irradiance <- expression(0.2)# idependent NOISE
+    # s_irradiance <- expression(0.2*((2*(Mmax-x)/Mmax)*(1-(Mmax-x)/Mmax)))# biomass_dependent_noise_0.2
     #s_irradiance <- expression(0.2*((2*(end.time-t)/end.time)*(1-(end.time-t)/end.time)))# time_dependent_noise_0.2
-    s_irradiance <- expression(0*x)
+    #s_irradiance <- expression(0*x)
     #delta: time step of the simulation,the fixed amount of time by which the simulation advances.
     #N:number of simulation steps.
     # diffusion coefficient: an expression of two variables t and x
@@ -145,8 +155,12 @@ for (i in c(1:301)){
   if (sum(is.na(simulated_irradiance_logistics_data))==0){
     fit <- sm.spline(x=time.vec,y=simulated_irradiance_logistics_data)
     derivative <-D1tr(y=simulated_irradiance_logistics_data, x = time.vec)
+    derivative_fit_spline <- sm.spline(y=c(derivative),x=c(simulated_irradiance_logistics_data))
+    predicted_derivative <- predict(derivative_fit_spline,x=seq(1, 6, 0.25))
+    smooth_derivative_df[ , ncol(derivative_df) + 1] = predicted_derivative
     derivative_df[ , ncol(derivative_df) + 1] = derivative
     lines(y=c(derivative),x=c(simulated_irradiance_logistics_data),type='l', col = "red")
+    lines(derivative_fit_spline, col = "salmon")
     # get the max on y, and matching x value
     derivateMax <- max(derivative)
     x_index <-which.max(derivative)
@@ -157,30 +171,26 @@ for (i in c(1:301)){
   }
 }
 
-plot(simulated_irradiance_logistics_data)
-write.csv(df,"data/simulated_data/fixed_Max_range_of_parameters/simulated_X_data_irradiance_without_noise.csv")
+#plot(simulated_irradiance_logistics_data)
+write.csv(df,"data/simulated_data/fixed_Max_range_of_parameters/simulated_X_data_irradiance_time_dependent_noise_0.2.csv")
 df_Y = data.frame(label_list)
 colnames(df_Y) <- c(1:301)
-write.csv(df_Y,"data/simulated_data/fixed_Max_range_of_parameters/simulated_label_data_irradiance_without_noise.csv")
+write.csv(df_Y,"data/simulated_data/fixed_Max_range_of_parameters/simulated_label_data_irradiance_time_dependent_noise_0.2.csv")
 # write derivative dataframe to csv
-write.csv(derivative_df,"data/simulated_data/fixed_Max_range_of_parameters/simulated_derivative_data_irradiance_without_noise.csv")
+write.csv(derivative_df,"data/simulated_data/fixed_Max_range_of_parameters/simulated_derivative_data_irradiance_time_dependent_noise_0.2.csv")
+# write smoothed derivative dataframe to csv
+write.csv(smooth_derivative_df,"data/simulated_data/fixed_Max_range_of_parameters/simulated_smoothed_derivative_data_irradiance_time_dependent_noise_0.2.csv")
 
 ### Allee model ###
-### Stochastic logistic equation
 set.seed(123)
 
-df <- data.frame(matrix(nrow = end.time, ncol = 0))
-r_list = list()
-s_list = list()
-label_list = list()
-
-# drop negetive r
 parameters_df<-subset(parameters_df, r>0)
 r_range <- c(min(parameters_df$r),max(parameters_df$r))
 y0_range <- c(min(parameters_df$y0),max(parameters_df$y0))
 
 df <- data.frame(matrix(nrow = end.time, ncol = 0))
 derivative_df <- data.frame(matrix(nrow = end.time, ncol = 0))
+smooth_derivative_df<- data.frame(matrix(nrow = length(seq(1, 6, 0.25)), ncol = 0))
 r_list = list()
 s_list = list()
 label_list = list()
@@ -200,8 +210,8 @@ for (i in c(1:301)){
     # noise <- rnorm(1,0,0.25) # idependent NOISE
     # s <- expression(noise)# idependent NOISE
     # s<- expression(0.2*((2*(Mmax-x)/Mmax)*(1-(Mmax-x)/Mmax))) #biomass_dependent_noise_0.2
-    # s <- expression(0.2*((2*(end.time-t)/end.time)*(1-(end.time-t)/end.time)))# time_dependent_noise_0.2
-    s <- expression(0*x) #without_noise
+    s <- expression(0.2*((2*(end.time-t)/end.time)*(1-(end.time-t)/end.time)))# time_dependent_noise_0.2
+    # s <- expression(0*x) #without_noise
     #delta: time step of the simulation,the fixed amount of time by which the simulation advances.
     #N:number of simulation steps.
     # diffusion coefficient: an expression of two variables t and x
@@ -221,8 +231,12 @@ for (i in c(1:301)){
   if (sum(is.na(simulated_allee_data))==0){
     fit <- sm.spline(x=time.vec,y=simulated_allee_data)
     derivative <-D1tr(y=simulated_allee_data, x = time.vec)
+    derivative_fit_spline <- sm.spline(y=c(derivative),x=c(simulated_allee_data))
+    predicted_derivative <- predict(derivative_fit_spline,x=seq(1, 6, 0.25))
+    smooth_derivative_df[ , ncol(derivative_df) + 1] = predicted_derivative
     derivative_df[ , ncol(derivative_df) + 1] = derivative
     lines(y=c(derivative),x=c(simulated_allee_data),type='l', col = "orange",xlim = c(0, 7),ylim = c(0.0,1.0))
+    lines(derivative_fit_spline, col = "darkorange")
     # get the max on y, and matching x value
     derivateMax <- max(derivative)
     x_index <-which.max(derivative)
@@ -235,9 +249,11 @@ for (i in c(1:301)){
 
 plot(simulated_allee_data)
 ### without_noise; time_independent_noise_0.25; time_dependent_noise_0.2; biomass_dependent_noise_0.2
-write.csv(df,"data/simulated_data/fixed_Max_range_of_parameters/simulated_X_data_Allee_without_noise.csv")
+write.csv(df,"data/simulated_data/fixed_Max_range_of_parameters/simulated_X_data_Allee_time_dependent_noise_0.2.csv")
 df_Y = data.frame(label_list)
 colnames(df_Y) <- c(1:301)
-write.csv(df_Y,"data/simulated_data/fixed_Max_range_of_parameters/simulated_label_data_Allee_without_noise.csv")
+write.csv(df_Y,"data/simulated_data/fixed_Max_range_of_parameters/simulated_label_data_Allee_time_dependent_noise_0.2.csv")
 # write derivative dataframe to csv
-write.csv(derivative_df,"data/simulated_data/fixed_Max_range_of_parameters/simulated_derivative_data_Allee_without_noise.csv")
+write.csv(derivative_df,"data/simulated_data/fixed_Max_range_of_parameters/simulated_derivative_data_Allee_time_dependent_noise_0.2.csv")
+# write smoothed derivative dataframe to csv
+write.csv(smooth_derivative_df,"data/simulated_data/fixed_Max_range_of_parameters/simulated_smoothed_derivative_data_Allee_time_dependent_noise_0.2.csv")
