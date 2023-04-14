@@ -18,7 +18,20 @@ library(sde) ### https://rdrr.io/cran/sde/man/sde.sim.html
 library('pspline')
 library('sfsmisc') # get the derivative
 library('Cairo')
-noise_type = c('time_independent_noise_0.25', 'time_dependent_noise_0.2', 'biomass_dependent_noise_0.2')
+#temperature data is download from https://www.visualcrossing.com/weather/weather-data-services# netherland from Feb. to May and add 15
+#because when tempreture is too low the tempreture curve grows too slow
+weather_condition <- read.csv("data/simulated_data/netherland 2022-02-01 to 2022-05-31.csv")
+temperature_list <- weather_condition$tempmin+15
+fit_temperature<- smooth.spline(temperature_list,nknots=10)
+temperature_list <- fit_temperature$y
+# read weather condition from the ELOPE platform weather condition
+#weather_condition <- read.csv("../elope-main/ELOPE_raw_data/data_platform/platform_envCovariates/WeatherConditions_Mean.csv")
+# temperature_condition <- weather_condition[c('Day','tempmean')]
+# # calculate daily mean
+# df =aggregate(temperature_condition$tempmean,list(temperature_condition$Day),mean)
+# temperature_list <- df$x
+
+noise_type = c('time_independent_noise_0.25', 'time_dependent_noise_0.2', 'biomass_dependent_noise_0.2','without_noise')
 
 for (noise_name in noise_type){
   
@@ -31,7 +44,7 @@ for (noise_name in noise_type){
   set.seed(123)
   df <- data.frame(matrix(nrow = end.time, ncol = 0))
   r_list = list()
-  s_list = list()
+
   label_list = list()
   # read parameters range
   parameters_df <- read.csv("logistics_fit_parameters.csv")
@@ -46,20 +59,20 @@ for (noise_name in noise_type){
   derivative_df <- data.frame(matrix(nrow = end.time, ncol = 0))
   smooth_derivative_df<- data.frame(matrix(nrow = length(seq(1, 6, 0.25)), ncol = 0)) #use for saving predicted derivative from spline per 0.25 biomass
   r_list = list()
-  s_list = list()
+  Mmax_list = list()
   label_list = list()
   #plot(x=0,y=0,xlim = c(0, 7),ylim = c(0.0,0.5),xlab="biomass",ylab="derivative")
   for (i in c(1:301)){
     print(i)
-    simulated_logistics_data <- NA
-    while(sum(is.na(simulated_logistics_data)) !=0){
+    simulated_logistics_data <- c(NA)
+    while(sum(is.na(simulated_logistics_data)) !=0|| (tail(simulated_logistics_data, n=1)<(Mmax-1))){
       #only keep the simulated data which doesn't have NA Inf or -Inf
       
       r <-runif(1,r_range[1],r_range[2])
       Mmax<-runif(1,5900,6100)/1000
       # Mmax <-6
       y0 <- 4.6/1000
-      d <- expression(r * x * (1 - x/Mmax) ) 
+      d <- expression(r * x * (1 - x/Mmax)) 
       if (noise_name=="without_noise"){
         s <- expression(0*x) #without_noise
       }
@@ -88,37 +101,38 @@ for (noise_name in noise_type){
     # save simulated data and parameters
     df[ , ncol(df) + 1] = simulated_logistics_data
     #save growth curve plot
-    Cairo(file=paste0("data/simulated_data/fixed_Max_range_of_parameters/plot/growth_curve/simulated_X_data_logistic_",noise_name,"_",i,"_.png",sep=""),
-          type="png",
+    Cairo(file=paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/plot/growth_curve/simulated_X_data_logistic_",noise_name,"_",i,"_.tiff",sep=""),
+          type="tiff",
           units="px", 
-          width=500, 
-          height=500, 
+          width=256, 
+          height=256, 
           pointsize=12, 
           dpi="auto")
     
     plot(simulated_logistics_data, col = "darkgreen",type='l',xlim = c(0, 120),ylim = c(0.0,7.0),ylab="",xlab="")
     dev.off()
     r_list <- append(r_list,r)
+    Mmax_list <- append(Mmax_list,Mmax)
     label_list <- append(label_list,"0")
     
     fit <- smooth.spline(x=time.vec,y=simulated_logistics_data)
     derivative <-D1tr(y=simulated_logistics_data, x = time.vec)
-    Cairo(file=paste0("data/simulated_data/fixed_Max_range_of_parameters/plot/smooth_derivative/simulated_X_data_logistic_",noise_name,"_",i,"_.png",sep=""),
-          type="png",
+    Cairo(file=paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/plot/smooth_derivative/simulated_X_data_logistic_",noise_name,"_",i,"_.tiff",sep=""),
+          type="tiff",
           units="px", 
-          width=500, 
-          height=500, 
+          width=256, 
+          height=256, 
           pointsize=12, 
           dpi="auto")
-    #plot(y=c(derivative),x=c(simulated_logistics_data),type='l', col = "green",xlim = c(0, 7),ylim = c(0.0,1.0))
     derivative_fit_spline <- smooth.spline(y=c(derivative),x=c(simulated_logistics_data),nknots=36)
-    predicted_derivative <- predict(derivative_fit_spline,x=seq(1, 6, 0.25))
-    smooth_derivative_df[ , ncol(derivative_df) + 1] = predicted_derivative$y
-    derivative_df[ , ncol(derivative_df) + 1] = derivative
-
     plot(derivative_fit_spline, col = "darkgreen",type='l',xlim = c(0, 7),ylim = c(0.0,2.0),ylab="",xlab="")
     ## When the device is off, file writing is completed.
     dev.off()
+    predicted_derivative <- predict(derivative_fit_spline,x=seq(1, 6, 0.25))
+    smooth_derivative_df[ , ncol(derivative_df) + 1] = predicted_derivative$y
+    derivative_df[ , ncol(derivative_df) + 1] = derivative
+    plot(y=c(derivative),x=c(simulated_logistics_data),type='l', col = "green",xlim = c(0, 7),ylim = c(0.0,1.0))
+    
     # get the max on y, and matching x value
     derivateMax <- max(derivative)
     x_index <-which.max(derivative)
@@ -130,26 +144,31 @@ for (noise_name in noise_type){
   
   ####save dataframe to files###
   #write biomass at 120 time steps to csv
-  write.csv(df,paste0("data/simulated_data/fixed_Max_range_of_parameters/simulated_X_data_logistic_",noise_name,".csv",sep=""))
+  write.csv(df,paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/simulated_X_data_logistic_",noise_name,".csv",sep=""))
   # rename label dataframe
   df_Y = data.frame(label_list)
   colnames(df_Y) <- c(1:301)
   # write label dataframe
-  write.csv(df_Y,paste0("data/simulated_data/fixed_Max_range_of_parameters/simulated_label_data_logistic_",noise_name,".csv",sep=""))
+  write.csv(df_Y,paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/simulated_label_data_logistic_",noise_name,".csv",sep=""))
   # write derivative dataframe to csv
-  write.csv(derivative_df,paste0("data/simulated_data/fixed_Max_range_of_parameters/simulated_derivative_data_logistic_",noise_name,".csv",sep=""))
+  write.csv(derivative_df,paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/simulated_derivative_data_logistic_",noise_name,".csv",sep=""))
   # write smoothed derivative dataframe to csv
-  write.csv(smooth_derivative_df,paste0("data/simulated_data/fixed_Max_range_of_parameters/simulated_smoothed_derivative_data_logistic_",noise_name,".csv",sep=""))
-
+  write.csv(smooth_derivative_df,paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/simulated_smoothed_derivative_data_logistic_",noise_name,".csv",sep=""))
+  df_r <- data.frame(r_list)
+  df_new = rbind(df_r,Mmax_list)
+  rownames(df_new)  <-c("r","Mmax")
+  colnames(df_new) <- c(1:301)
+  write.csv(df_new,paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/parameters_list_simulated_data_logistic_",noise_name,".csv",sep=""))
   
   ######generate data from Irradiance model######
   df <- data.frame(matrix(nrow = end.time, ncol = 0))
   derivative_df <- data.frame(matrix(nrow = end.time, ncol = 0))
   smooth_derivative_df<- data.frame(matrix(nrow = length(seq(1, 6, 0.25)), ncol = 0))
+  #creat list for saving parameters
   r_list = list()
   a_list = list()
-  fi_list = list()
-  s_list = list()
+  phi_list = list()
+  Mmax_list = list()
   label_list = list()
   for (i in c(1:301)){
     print(i)
@@ -193,14 +212,15 @@ for (noise_name in noise_type){
     df[ , ncol(df) + 1] = simulated_irradiance_logistics_data
     r_list <- append(r_list,r)
     a_list <- append(a_list,a)
-    fi_list <- append(fi_list,fi)
+    phi_list <- append(phi_list,fi)
+    Mmax_list <- append(Mmax_list,Mmax)
     label_list <- append(label_list,'1')
     
-    Cairo(file=paste0("data/simulated_data/fixed_Max_range_of_parameters/plot/growth_curve/simulated_X_data_irradiance_",noise_name,"_",i,"_.png",sep=""),
-          type="png",
+    Cairo(file=paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/plot/growth_curve/simulated_X_data_irradiance_",noise_name,"_",i,"_.tiff",sep=""),
+          type="tiff",
           units="px", 
-          width=500, 
-          height=500, 
+          width=256, 
+          height=256, 
           pointsize=12, 
           dpi="auto")
     
@@ -213,11 +233,11 @@ for (noise_name in noise_type){
     smooth_derivative_df[ , ncol(derivative_df) + 1] = predicted_derivative$y
     derivative_df[ , ncol(derivative_df) + 1] = derivative
     plot(y=c(derivative),x=c(simulated_irradiance_logistics_data),type='l', col = "red",xlim = c(0, 7),ylim = c(0.0,2.0))
-    Cairo(file=paste0("data/simulated_data/fixed_Max_range_of_parameters/plot/smooth_derivative/simulated_X_data_irradiance_",noise_name,"_",i,"_.png",sep=""),
-          type="png",
+    Cairo(file=paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/plot/smooth_derivative/simulated_X_data_irradiance_",noise_name,"_",i,"_.tiff",sep=""),
+          type="tiff",
           units="px", 
-          width=500, 
-          height=500, 
+          width=256, 
+          height=256, 
           pointsize=12, 
           dpi="auto")
     plot(derivative_fit_spline, col = "salmon",type='l',xlim = c(0, 7),ylim = c(0.0,2.0),xlab="",ylab="")
@@ -233,15 +253,22 @@ for (noise_name in noise_type){
   }
   
   #plot(simulated_irradiance_logistics_data)
-  write.csv(df,paste0("data/simulated_data/fixed_Max_range_of_parameters/simulated_X_data_irradiance_",noise_name,".csv",sep=""))
+  write.csv(df,paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/simulated_X_data_irradiance_",noise_name,".csv",sep=""))
   df_Y = data.frame(label_list)
   colnames(df_Y) <- c(1:301)
-  write.csv(df_Y,paste0("data/simulated_data/fixed_Max_range_of_parameters/simulated_label_data_irradiance_",noise_name,".csv",sep=""))
+  write.csv(df_Y,paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/simulated_label_data_irradiance_",noise_name,".csv",sep=""))
   # write derivative dataframe to csv
-  write.csv(derivative_df,paste0("data/simulated_data/fixed_Max_range_of_parameters/simulated_derivative_data_irradiance_",noise_name,".csv",sep=""))
+  write.csv(derivative_df,paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/simulated_derivative_data_irradiance_",noise_name,".csv",sep=""))
   # write smoothed derivative dataframe to csv
-  write.csv(smooth_derivative_df,paste0("data/simulated_data/fixed_Max_range_of_parameters/simulated_smoothed_derivative_data_irradiance_",noise_name,".csv",sep=""))
-
+  write.csv(smooth_derivative_df,paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/simulated_smoothed_derivative_data_irradiance_",noise_name,".csv",sep=""))
+  df_r <- data.frame(r_list)
+  df_new = rbind(df_r,Mmax_list)
+  df_new = rbind(df_new,phi_list)
+  df_new = rbind(df_new,a_list)
+  rownames(df_new)  <-c("r","Mmax","Phi","a")
+  colnames(df_new) <- c(1:301)
+  write.csv(df_new,paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/parameters_list_simulated_data_irradiance_",noise_name,".csv",sep=""))
+  
   ### Allee model ###
   set.seed(123)
   
@@ -252,14 +279,16 @@ for (noise_name in noise_type){
   df <- data.frame(matrix(nrow = end.time, ncol = 0))
   derivative_df <- data.frame(matrix(nrow = end.time, ncol = 0))
   smooth_derivative_df<- data.frame(matrix(nrow = length(seq(1, 6, 0.25)), ncol = 0))
+  #list for saving parameters
   r_list = list()
-  s_list = list()
+  Ma_list = list()
+  Mmax_list = list()
   label_list = list()
   
   for (i in c(1:301)){
     print(i)
     simulated_allee_data <- NA
-    while(sum(is.na(simulated_allee_data)) !=0){
+    while(sum(is.na(simulated_allee_data)) !=0 || (tail(simulated_allee_data, n=1)<(Mmax-1))){
       #only keep the simulated data which doesn't have NA Inf or -Inf
       
       r <-runif(1,r_range[1],r_range[2])
@@ -267,12 +296,25 @@ for (noise_name in noise_type){
       y0 <- 4.6/1000
       Ma <- runif(1,0,y0) #yo>Ma
       d <- expression(r*x*(1 - x/Mmax)*(x/(x + Ma))) 
-      
+      if (noise_name=="without_noise"){
+        s_allee <- expression(0*x) #without_noise
+      }
+      if (noise_name=="biomass_dependent_noise_0.2"){
+        s_allee<- expression(0.2*((2*(Mmax-x)/Mmax)*(1-(Mmax-x)/Mmax))) # biomass_dependent_noise_0.2
+      }
+      if (noise_name=="time_independent_noise_0.25"){
+        noise <- rnorm(1,0,0.25) # idependent NOISE
+        s_allee <- expression(noise)# time_independent_noise_0.25
+      }
+      if (noise_name=="time_dependent_noise_0.2"){
+        s_allee <- expression(0.2*((2*(end.time-t)/end.time)*(1-(end.time-t)/end.time)))# time_dependent_noise_0.2
+        
+      }
       #delta: time step of the simulation,the fixed amount of time by which the simulation advances.
       #N:number of simulation steps.
       # diffusion coefficient: an expression of two variables t and x
       #M: number of trajectories.
-      sde.sim(X0=y0, delta=1, N=(end.time-1), drift=d, sigma=s, M = 1) -> simulated_allee_data
+      sde.sim(X0=y0, delta=1, N=(end.time-1), drift=d, sigma=s_allee, M = 1) -> simulated_allee_data
       
       #plot(simulated_allee_data)
       
@@ -283,12 +325,14 @@ for (noise_name in noise_type){
     # save simulated data and parameters
     df[ , ncol(df) + 1] = simulated_allee_data
     r_list <- append(r_list,r)
+    Ma_list <-append(Ma_list,Ma)
+    Mmax_list <-append(Mmax_list,Mmax)
     label_list <- append(label_list,"2")
-    Cairo(file=paste0("data/simulated_data/fixed_Max_range_of_parameters/plot/growth_curve/simulated_X_data_Allee_",noise_name,"_",i,"_.png",sep=""),
-          type="png",
+    Cairo(file=paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/plot/growth_curve/simulated_X_data_Allee_",noise_name,"_",i,"_.tiff",sep=""),
+          type="tiff",
           units="px", 
-          width=500, 
-          height=500, 
+          width=256, 
+          height=256, 
           pointsize=12, 
           dpi="auto")
     
@@ -300,16 +344,17 @@ for (noise_name in noise_type){
     predicted_derivative <- predict(derivative_fit_spline,x=seq(1, 6, 0.25))
     smooth_derivative_df[ , ncol(derivative_df) + 1] = predicted_derivative$y
     derivative_df[ , ncol(derivative_df) + 1] = derivative
-    plot(y=c(derivative),x=c(simulated_allee_data),type='l', col = "orange",xlim = c(0, 7),ylim = c(0.0,2.0))
-    Cairo(file=paste0("data/simulated_data/fixed_Max_range_of_parameters/plot/smooth_derivative/simulated_X_data_Allee_",noise_name,"_",i,"_.png",sep=""),
-          type="png",
+    
+    Cairo(file=paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/plot/smooth_derivative/simulated_X_data_Allee_",noise_name,"_",i,"_.tiff",sep=""),
+          type="tiff",
           units="px", 
-          width=500, 
-          height=500, 
+          width=256, 
+          height=256, 
           pointsize=12, 
           dpi="auto")
     plot(derivative_fit_spline, col = "darkorange",type='l',xlim = c(0, 7),ylim = c(0.0,2.0),xlab="",ylab="")
     dev.off()
+    plot(y=c(derivative),x=c(simulated_allee_data),type='l', col = "orange",xlim = c(0, 7),ylim = c(0.0,2.0))
     # get the max on y, and matching x value
     derivateMax <- max(derivative)
     x_index <-which.max(derivative)
@@ -322,14 +367,139 @@ for (noise_name in noise_type){
   
   #plot(simulated_allee_data)
   ### without_noise; time_independent_noise_0.25; time_dependent_noise_0.2; biomass_dependent_noise_0.2
-  write.csv(df,paste0("data/simulated_data/fixed_Max_range_of_parameters/simulated_X_data_Allee_",noise_name,".csv",sep=""))
+  write.csv(df,paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/simulated_X_data_Allee_",noise_name,".csv",sep=""))
   df_Y = data.frame(label_list)
   colnames(df_Y) <- c(1:301)
   colnames(derivative_df) <- c(1:301)
-  write.csv(df_Y,paste0("data/simulated_data/fixed_Max_range_of_parameters/simulated_label_data_Allee_",noise_name,".csv",sep=""))
+  write.csv(df_Y,paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/simulated_label_data_Allee_",noise_name,".csv",sep=""))
   # write derivative dataframe to csv
-  write.csv(derivative_df,paste0("data/simulated_data/fixed_Max_range_of_parameters/simulated_derivative_data_Allee_",noise_name,".csv",sep=""))
+  write.csv(derivative_df,paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/simulated_derivative_data_Allee_",noise_name,".csv",sep=""))
   # write smoothed derivative dataframe to csv
-  write.csv(smooth_derivative_df,paste0("data/simulated_data/fixed_Max_range_of_parameters/simulated_smoothed_derivative_data_Allee_",noise_name,".csv",sep=""))
+  write.csv(smooth_derivative_df,paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/simulated_smoothed_derivative_data_Allee_",noise_name,".csv",sep=""))
+  df_r <- data.frame(r_list)
+  df_new = rbind(df_r,Mmax_list)
+  df_new = rbind(df_new,Ma_list)
+  rownames(df_new)  <-c("r","Mmax","Ma")
+  colnames(df_new) <- c(1:301)
+  write.csv(df_new,paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/parameters_list_simulated_data_Allee_",noise_name,".csv",sep=""))
+  
+  # ### temperature model ###
+  set.seed(123)
 
+  parameters_df<-subset(parameters_df, r>0)
+  r_range <- c(min(parameters_df$r),max(parameters_df$r))
+  y0_range <- c(min(parameters_df$y0),max(parameters_df$y0))
+
+  df <- data.frame(matrix(nrow = end.time, ncol = 0))
+  derivative_df <- data.frame(matrix(nrow = end.time, ncol = 0))
+  smooth_derivative_df<- data.frame(matrix(nrow = length(seq(1, 6, 0.25)), ncol = 0))
+  r_list = list()
+  Mmax_list = list()
+  label_list = list()
+
+  for (i in c(1:301)){
+    print(i)
+    simulated_temperature_data <- NA
+    while(sum(is.na(simulated_temperature_data)) !=0 || (tail(simulated_temperature_data, n=1)<(Mmax-1))){ 
+      #only keep the simulated data which doesn't have NA Inf or -Inf
+
+      #r <-runif(1,r_range[1],r_range[2])
+      r<-0.6
+      Mmax<-runif(1,5900,6100)/1000
+      y0 <- 4.6/1000
+      TAL= 20000
+      TL = 292
+      TAH = 60000
+      TH = 303
+      temp_t = temperature_list
+      r.adapt <- (1 + exp(TAL/(temp_t + 273) - TAL/TL) + exp(TAH/TH - TAH/(temp_t + 273) ))^{-1}
+      d <- expression(r.adapt*r * x * (1 - x/Mmax)) 
+
+      if (noise_name=="without_noise"){
+        s_temperature <- expression(0*x) #without_noise
+      }
+      if (noise_name=="biomass_dependent_noise_0.2"){
+        s_temperature<- expression(0.2*((2*(Mmax-x)/Mmax)*(1-(Mmax-x)/Mmax))) # biomass_dependent_noise_0.2
+      }
+      if (noise_name=="time_independent_noise_0.25"){
+        noise <- rnorm(1,0,0.25) # idependent NOISE
+        s_temperature <- expression(noise)# time_independent_noise_0.25
+      }
+      if (noise_name=="time_dependent_noise_0.2"){
+        s_temperature <- expression(0.2*((2*(end.time-t)/end.time)*(1-(end.time-t)/end.time)))# time_dependent_noise_0.2
+        
+      }
+      #delta: time step of the simulation,the fixed amount of time by which the simulation advances.
+      #N:number of simulation steps.
+      # diffusion coefficient: an expression of two variables t and x
+      #M: number of trajectories.
+      sde.sim(X0=y0, delta=1, N=(end.time-1), drift=d, sigma=s_temperature, M = 1) -> simulated_temperature_data
+
+      plot(simulated_temperature_data)
+
+      simulated_temperature_data <- replace(simulated_temperature_data, simulated_temperature_data==-Inf, NA)
+      simulated_temperature_data <- replace(simulated_temperature_data, simulated_temperature_data==Inf, NA)
+    }
+    #plot(simulated_temperature_data)
+    # save simulated data and parameters
+    df[ , ncol(df) + 1] = simulated_temperature_data
+    r_list <- append(r_list,r)
+    Mmax_list <-append(Mmax_list,Mmax)
+    label_list <- append(label_list,"2")
+    Cairo(file=paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/plot/growth_curve/simulated_X_data_Temperature_",noise_name,"_",i,"_.tiff",sep=""),
+          type="tiff",
+          units="px",
+          width=256,
+          height=256,
+          pointsize=12,
+          dpi="auto")
+
+    plot(simulated_temperature_data, col = "grey",type='l',xlim = c(0, 120),ylim = c(0.0,7.0),ylab="",xlab="")
+    dev.off()
+    fit <- smooth.spline(x=time.vec,y=simulated_temperature_data)
+    derivative <-D1tr(y=simulated_temperature_data, x = time.vec)
+    derivative_fit_spline <- smooth.spline(y=c(derivative),x=c(simulated_temperature_data),nknots=36)
+    predicted_derivative <- predict(derivative_fit_spline,x=seq(1, 6, 0.25))
+    smooth_derivative_df[ , ncol(derivative_df) + 1] = predicted_derivative$y
+    derivative_df[ , ncol(derivative_df) + 1] = derivative
+    plot(y=c(derivative),x=c(simulated_temperature_data),type='l', col = "grey",xlim = c(0, 7),ylim = c(0.0,2.0))
+    Cairo(file=paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/plot/smooth_derivative/simulated_X_data_Temperature_",noise_name,"_",i,"_.tiff",sep=""),
+          type="tiff",
+          units="px",
+          width=256,
+          height=256,
+          pointsize=12,
+          dpi="auto")
+    plot(derivative_fit_spline, col = "darkgrey",type='l',xlim = c(0, 7),ylim = c(0.0,2.0),xlab="",ylab="")
+    dev.off()
+    # get the max on y, and matching x value
+    derivateMax <- max(derivative)
+    x_index <-which.max(derivative)
+    # mark the max point on the plot
+    points(y=derivateMax, x = simulated_temperature_data[x_index], col = "grey", pch = 19)
+    # add vertical line
+    abline(v = simulated_allee_data[x_index], col = "grey", lty = "dashed")
+
+  }
+
+  plot(simulated_temperature_data)
+
+  write.csv(df,paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/simulated_X_data_Temperature_",noise_name,".csv",sep=""))
+  df_Y = data.frame(label_list)
+  colnames(df_Y) <- c(1:301)
+  colnames(derivative_df) <- c(1:301)
+  write.csv(df_Y,paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/simulated_label_data_Temperature_",noise_name,".csv",sep=""))
+  # write derivative dataframe to csv
+  write.csv(derivative_df,paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/simulated_derivative_data_Temperature_",noise_name,".csv",sep=""))
+  # write smoothed derivative dataframe to csv
+  write.csv(smooth_derivative_df,paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/simulated_smoothed_derivative_data_Temperature_",noise_name,".csv",sep=""))
+  df_r <- data.frame(r_list)
+  df_new = rbind(df_r,Mmax_list)
+  rownames(df_new)  <-c("r","Mmax")
+  colnames(df_new) <- c(1:301)
+  write.csv(df_new,paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/parameters_list_simulated_data_Temperature_",noise_name,".csv",sep=""))
 }
+
+#simulated_snps which has effect on the Max_biomass(aa,Aa,AA):(Mmax<-runif(5800,5900),Mmax<-runif(5900,6000),Mmax<-runif(6000,6100)), growth rate:r(bb,Bb,BB) and high temperature change tolerance(cc), and irridance change tolerance(dd)
+# combination of five snps, we assumne only cc and dd has the effect of the last two, and the first two is related to the number of A at the position.
+# so we generate 3*3*2*2 =36 different genotypes based on that(2 for snps c and d, because there are no difference between Cc and CC)
