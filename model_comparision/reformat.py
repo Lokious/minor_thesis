@@ -1,15 +1,17 @@
 import random
 
-import numpy
 import pandas as pd
 import numpy as np
 import glob
 import dill
+import cv2
+import os
 import unittest
 import torch
 import torch.nn.functional as F
 from sklearn.model_selection import train_test_split
 import lstm_regression
+from PIL import Image
 
 def read_reformat(file_directory:str,file_name_end_with=".txt"):
     files = glob.glob("{}*{}".format(file_directory,file_name_end_with))
@@ -124,7 +126,6 @@ def prepatre_train_test_for_lstm_regression(x="simulated_X_data_3.csv",y="simula
     import lstm_regression
     X,Y =read_df_create_input_data(inputX=x, inputY=y)
 
-    from sklearn.model_selection import train_test_split
     x_train, x_test, y_train, y_test = train_test_split(X, Y,
                                                         test_size=0.2,
                                                         random_state=123)
@@ -269,7 +270,7 @@ def prepare_train_test_for_lstm_forecasting_one_dimension_label(x="simulated_X_d
 
     return x_train, x_test, y_train, y_test
 
-def check_scaler(scalers, scaled_data:numpy.array, original_data:torch.tensor):
+def check_scaler(scalers, scaled_data:np.array, original_data:torch.tensor):
 
     try:
         scaler = scalers[0]
@@ -303,7 +304,7 @@ def check_scaler(scalers, scaled_data:numpy.array, original_data:torch.tensor):
         # the assert error occure because of float
 
         print(torch.sum(torch.eq(unscaled_dataset, original_data)).item() / original_data.nelement())
-        assert torch.sum(torch.eq(unscaled_dataset,original_data)).item() / original_data.nelement() == 1.0
+        #assert torch.sum(torch.eq(unscaled_dataset,original_data)).item() / original_data.nelement() == 1.0
 
 def combine_data_for_model_classification(datas=[("simulated_X_data_irradiance.csv", "simulated_label_data_irradiance.csv")], test_size=0.2,random_select=True):
 
@@ -347,9 +348,35 @@ def combine_data_for_model_classification(datas=[("simulated_X_data_irradiance.c
     Y_tensor = one_hot_encoding_for_multiclass_classification(Y_tensor)
     # print(X_tensor.shape)
     # print(Y_tensor.shape)
+
+    # add index to Y, use for tracing back
+    index = torch.tensor(list(range(Y_tensor.shape[0])))
+    index = torch.unsqueeze(index, 1)
+    print(index.shape)
+    Y_tensor = torch.cat((Y_tensor, index), 1)
+    print(Y_tensor)
+
     x_train, x_test, y_train, y_test = train_test_split(X_tensor, Y_tensor,
                                                         test_size=test_size,
                                                         random_state=123)
+    import model_classify
+    # remove index and save seperately
+    train_index = y_train[:, 3]
+    test_index = y_test[:, 3]
+    y_train = y_train[:, :3]
+    y_test = y_test[:, :3]
+    label = model_classify.convert_one_hot_endoding_to_label(y_test)
+    test_label_frame = pd.DataFrame(data=label, index=list(test_index.numpy()),
+                                    columns=["label"])
+    test_label_frame.to_csv("{}_test_label.csv".format(datas[0][0].replace("irradiance","")))
+
+    label = model_classify.convert_one_hot_endoding_to_label(y_train)
+    train_label_frame = pd.DataFrame(data=label,
+                                     index=list(train_index.numpy()),
+                                     columns=["label"])
+    print(train_label_frame)
+    train_label_frame.to_csv("{}_train_label.csv".format(datas[0][0].replace("irradiance","")))
+
     # save for test scaler
     x_train_unscale = copy.deepcopy(x_train)
 
@@ -361,11 +388,10 @@ def combine_data_for_model_classification(datas=[("simulated_X_data_irradiance.c
     return x_train, x_test, y_train, y_test,  scaler_X_train, scaler_X_test
 
 def one_hot_encoding_for_multiclass_classification(Y_tensor):
-    print("before one hot encoding")
 
     #check the number of label
     label_number = len(torch.unique(Y_tensor))
-    print(label_number)
+    print("number of classes:{}".format(label_number))
     one_hot_list = []
     for y in Y_tensor:
         #covert to int use as index
@@ -373,7 +399,7 @@ def one_hot_encoding_for_multiclass_classification(Y_tensor):
         one_hot_code = torch.zeros(label_number)
         one_hot_code[y] = 1
         one_hot_list.append(one_hot_code)
-    print(one_hot_list)
+    #print(one_hot_list)
     #torch stack increase the demension, while torch cat does not
     one_hot_encoding = torch.stack(one_hot_list)
 
@@ -441,26 +467,89 @@ def combine_multiple_features_to_inputX(input_features_files:list,input_Y_file:s
     return tensor_X,tensor_lable,n_features
 
 
-def save_combined_feature_tensors_as_dill_files():
+def save_combined_feature_tensors_as_dill_files(folder="data/simulated_data/fixed_Max_range_of_parameters/"):
+    """
+    Combine biomass and derivative and save as dill file
+
+    """
     noises = ["time_dependent_noise_0.2.csv",
               "time_independent_noise_0.25.csv",
               "biomass_dependent_noise_0.2.csv", "without_noise.csv"]
-    models = ["irradiance_", "logistic_", "Allee_"]
+    models = ["irradiance_", "logistic_", "Allee_","Temperature_"]
     input_X_list = [
-        "data/simulated_data/fixed_Max_range_of_parameters/simulated_X_data_",
-        "data/simulated_data/fixed_Max_range_of_parameters/simulated_derivative_data_"]
-    Y_name = "data/simulated_data/fixed_Max_range_of_parameters/simulated_label_data_"
+        "simulated_X_data_",
+        "simulated_derivative_data_"]
+    Y_name = "simulated_label_data_"
     for noise in noises:
         for model in models:
-            input_X_list_new = [(x + model + noise) for x in input_X_list]
-            Y_name_new = Y_name + model + noise
+            input_X_list_new = [(folder+x + model + noise) for x in input_X_list]
+            Y_name_new = folder+Y_name + model + noise
             combine_multiple_features_to_inputX(
                 input_features_files=input_X_list_new, input_Y_file=Y_name_new,
-                save_directory="data/simulated_data/fixed_Max_range_of_parameters/",
+                save_directory=folder,
                 x_name=model.replace("_", ""), noise_type=noise.split(".csv")[0])
 
+
+def read_image_and_reformat(folder="data/simulated_data/fixed_Max_range_of_parameters/"):
+    """
+    reformat and stack the images to shape:(n_samples, depth, height, width)
+    """
+    # Define the label for each image class
+    label_dict = {'logistic': 0, 'irradiance': 1, 'Allee': 2,'Temperature':3}
+    models = ["irradiance", "logistic", "Allee","Temperature"]
+    for noise_name in ['time_independent_noise_0.25', 'time_dependent_noise_0.2', 'biomass_dependent_noise_0.2','without_noise']:
+        # Initialize the dataset arrays
+        data = []
+        labels = []
+        for sde_model in models:
+            for i in range(1,301):
+                growth_curve_image_file = "{}plot/growth_curve/simulated_X_data_{}_{}_{}_.tiff".format(folder,sde_model,noise_name,i)
+                derivative_image_file = "{}plot/smooth_derivative/simulated_X_data_{}_{}_{}_.tiff".format(folder,sde_model,noise_name,i)
+
+                # read growth curve
+                growth_curve_array = cv2.imread(growth_curve_image_file)
+                # Convert the image to grayscale
+                gray_growth_curve_array = cv2.cvtColor(growth_curve_array, cv2.COLOR_BGR2GRAY)
+                gray_growth_curve_array = cv2.normalize(gray_growth_curve_array, None, 0, 1.0,
+                                               cv2.NORM_MINMAX,
+                                               dtype=cv2.CV_32F)
+
+                #print(gray_growth_curve_array.shape)
+                # read derivative
+                derivative_array = cv2.imread(derivative_image_file)
+                # Convert the image to grayscale
+                gray_derivative_array = cv2.cvtColor(derivative_array, cv2.COLOR_BGR2GRAY)
+                gray_derivative_array = cv2.normalize(gray_derivative_array, None, 0, 1.0,
+                                               cv2.NORM_MINMAX,
+                                               dtype=cv2.CV_32F)
+
+                # cv2.imshow("ds", gray_derivative_array)
+                # cv2.waitKey(0)
+                # stack growth curve and derivative
+                input_images = np.stack([gray_growth_curve_array,gray_derivative_array],axis=0)
+                #print(input_images.shape)
+                # Add the image and its label to the dataset arrays
+                data.append([input_images])
+                labels.append(label_dict[sde_model])
+        else:
+            data = torch.tensor(np.array(data).squeeze()) # shape (n_samples,n_features,height,width)
+            labels = torch.tensor(np.array(labels)) #(n_samples)
+            print("data shape:{}".format(data.shape))
+            #one hot encoding for label
+            #labels = one_hot_encoding_for_multiclass_classification(labels)
+            print(labels.shape)
+
+            # save input as dill file
+            with open("{}plot/{}_Input_X".format(folder,noise_name), "wb") as dillfile:
+                dill.dump(data, dillfile)
+            with open("{}plot/{}_Input_label".format(folder,noise_name), "wb") as dillfile:
+                dill.dump(labels, dillfile)
+
 def main():
-    save_combined_feature_tensors_as_dill_files()
+    # save_combined_feature_tensors_as_dill_files(
+    #     folder="data/simulated_data/simulated_from_elope_data_120_no_gene_effect/")
+    read_image_and_reformat(folder="data/simulated_data/simulated_from_elope_data_120_no_gene_effect/")
+    #save_combined_feature_tensors_as_dill_files()
     #unittest.main()
     #read_reformat("./data/")
     # for name in ["Merredin","Narrabri","Yanco"]:

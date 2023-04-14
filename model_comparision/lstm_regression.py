@@ -219,6 +219,7 @@ def training(model, x, y, batch_size,epoch:int,out_fig="lstm_result_for_logistic
 
             # Forward pass
             predict_outputs = model(inputs.float())
+
             # predict_outputs = predict_outputs.float()
             targets = targets.float()
             loss = criterion(predict_outputs, targets)
@@ -317,7 +318,15 @@ def plot_r_predict_against_true(outputs,y,title="train"):
     plt.show()
 
 def main():
-    model = LSTM_forcasting(input_size=1,hidden_size=2,output_size=3)
-
+    model = LSTM_forcasting(input_size=1,hidden_size=2,output_size=120)
+    input_deri = \
+        pd.read_csv("data/simulated_data/fixed_Max_range_of_parameters/simulated_derivative_data_irradiance_time_independent_noise_0.25.csv",header=0,index_col=0)
+    input_deri = torch.tensor(input_deri.values)
+    input_deri = torch.unsqueeze(input_deri,1)
+    input_deri = torch.permute(input_deri,(2,0,1))
+    print(input_deri.shape)
+    output_y = copy.deepcopy(input_deri)
+    output_y = torch.squeeze(output_y)
+    training(model=model,x=input_deri,y=output_y,batch_size=10,epoch=100,lr=0.001)
 if __name__ == '__main__':
     main()

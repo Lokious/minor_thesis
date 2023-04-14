@@ -20,6 +20,7 @@ from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.metrics import confusion_matrix, mean_squared_error, mean_absolute_percentage_error, r2_score, mean_absolute_error, accuracy_score, ConfusionMatrixDisplay, multilabel_confusion_matrix
 from sklearn.model_selection import GridSearchCV
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.multiclass import OneVsRestClassifier
 from sklearn.model_selection import GroupShuffleSplit
 from sklearn.metrics import make_scorer
 from sklearn.metrics import matthews_corrcoef
@@ -71,26 +72,67 @@ class LSTMModelClassification(nn.Module):
 
 class CNNModelClassification(nn.Module):
 
-    # less parameters compare to LSTM
-    def __init__(self, input_size, kernel_size, ouput_size,time_step, num_layers=2,
+    # treat growth curve and derivative against biomass as image input
+    def __init__(self, input_size,input_channel, kernel_size, stride,ouput_size=3,
                  dropout=0.1):
+        #https://pytorch.org/docs/stable/generated/torch.nn.Conv2d.html
         super().__init__()
-        self.input_size = input_size
+        self.height = input_size[0]
+        self.width = input_size[1]
         self.kernel_size = kernel_size
-        self.num_layers = num_layers
-        self.cnn = nn.Conv1d(in_channels=time_step,out_channels=time_step*kernel_size,kernel_size=kernel_size,)
-        self.fc = nn.Linear(time_step*kernel_size, ouput_size)
+
+        #(N,C,H,W)
+        #N is a batch size, C denotes a number of channels, H is a height of input planes in pixels, and W is width in pixels.
+        self.cnn1 = nn.Conv2d(in_channels=input_channel,out_channels=3,kernel_size=kernel_size)
+        self.Leakyrelu1 = nn.LeakyReLU()
+        self.out_size1 = int(
+            ((self.height - 1 * (kernel_size - 1) - 1) // 1) + 1) #output height for cnn layer
+        print(self.out_size1)
+        # self.cnn2 = nn.Conv2d(in_channels=6,out_channels=12,kernel_size=kernel_size)
+        # self.Leakyrelu2 = nn.LeakyReLU()
+        # self.out_size = int(
+        #     ((self.out_size1 - 1 * (kernel_size - 1) - 1) // 1) + 1) #output height for cnn layer
+        #print(self.out_size)
+
+
+        pooling_kernel_size = kernel_size*3
+        self.pooling1 = nn.MaxPool2d(kernel_size=pooling_kernel_size,stride=stride) #https://pytorch.org/docs/stable/generated/torch.nn.AvgPool2d.html
+        pooling_out_size = 1+(self.out_size1 - 1*(pooling_kernel_size-1)-1)//stride
+        self.Leakyrelu3 = nn.LeakyReLU()
+        self.pooling2 = nn.MaxPool2d(kernel_size=pooling_kernel_size,
+                                     stride=stride)  # https://pytorch.org/docs/stable/generated/torch.nn.AvgPool2d.html
+        self.Leakyrelu4 = nn.LeakyReLU()
+        pooling_out_size = 1 + (pooling_out_size - 1 * (pooling_kernel_size - 1) - 1) // stride
+        self.cnn_1 = nn.Conv2d(in_channels=3,out_channels=3,kernel_size=1)
+        # Flatten for dense layers
+        self.flatten = nn.Flatten()
+        # dropout
+        self.drop_out = nn.Dropout(p=dropout)
+        self.linear = nn.Linear(3*pooling_out_size*pooling_out_size, ouput_size)
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
+        # Forward propagate CNN
 
-        # Forward propagate LSTM
-        output, _ = self.cnn(x)
+        cnn_output1 = self.cnn1(x)
+        cnn_output1 = self.Leakyrelu3(cnn_output1)
+        # cnn_output2 = self.cnn2(cnn_output1)
+        # cnn_output2 = self.Leakyrelu2(cnn_output2)
+        #print("{}".format(cnn_output2.shape))
+        pooling_output1 = self.pooling1(cnn_output1)
+        #print("pooling output {}".format(pooling_output1.shape))
+        pooling_output2 = self.Leakyrelu3(pooling_output1)
+        pooling_output2 = self.pooling2(pooling_output2)
+        pooling_output = self.Leakyrelu4(pooling_output2)
 
-        # take the output of the last time step, feed it in to a fully connected layer
-        output = self.fc(output[-1, :, :])
-        output_label = self.sigmoid(output)
+        #flatten_out = self.drop_out(flatten_out)
+        output = self.cnn_1(pooling_output)
 
+        flatten_out = self.flatten(output)
+
+        flatten_out = self.linear(flatten_out)
+
+        output_label = self.sigmoid(flatten_out)
         return output_label
 
     def init_network(self):
@@ -102,40 +144,42 @@ class CNNModelClassification(nn.Module):
                 nn.init.constant_(param, 0.0)
 
 
+
 class RandomForest():
 
     def RF_model(self,X_train, y_train,X_test, y_test,file_name):
 
-        hyperparameters = {'n_estimators': [100,500,1000],
+        hyperparameters = {'n_estimators': [100,500],
                            'max_features': [0.3,0.5,0.7],
-                           'max_depth' : [10,15,20]
+                           'max_depth' : [10,]
                            }
+
         rf_cv = GridSearchCV(
             RandomForestClassifier(random_state=0, class_weight="balanced", ),
-            hyperparameters, scoring='roc_auc',
-            cv=5,
+            hyperparameters, scoring='roc_auc_ovr',
+            cv=2,
             verbose=3,
             n_jobs=2)
 
         rf_cv.fit(X_train, y_train)
-        print(rf_cv.best_params_)
+        #print(rf_cv.best_params_)
         # roc for train data
-        threshold_train = self.show_roc(rf_cv.best_estimator_, X_train, y_train,
+        print(X_train.shape)
+        print(y_train.shape)
+        self.show_roc(rf_cv.best_estimator_, X_train, y_train,
                                         (file_name + "train"))
         # roc for test data
-        threshold_test = self.show_roc(rf_cv.best_estimator_, X_test, y_test,
+        self.show_roc(rf_cv.best_estimator_, X_test, y_test,
                                        (file_name + "test"))
-
+        self.plot_feature_importance(rf_cv.best_estimator_, X_train)
         # confusion matrix for train
-        self.cm_threshold(threshold_train, X_train, y_train, rf_cv.best_estimator_,
-                          (file_name + "train"))
+        self.cm_display(X_train, y_train, rf_cv.best_estimator_,
+                        (file_name + "train"))
         # self.cm_threshold(0.5, X_train, y_train, rf_cv.best_estimator_,
         #              (file_name + "train"))
-        self.cm_threshold(threshold_test, X_test, y_test, rf_cv.best_estimator_,
-                          (file_name + "test"))
-        cm_matrix = self.cm_threshold(threshold_train, X_test, y_test,
-                                      rf_cv.best_estimator_,
-                                      (file_name + "test (same as train threshold)"))
+        self.cm_display(X_test, y_test, rf_cv.best_estimator_,
+                        (file_name + "test"))
+
 
         print(rf_cv.cv_results_)
         sns.lineplot(y=rf_cv.cv_results_["mean_test_score"],
@@ -145,77 +189,80 @@ class RandomForest():
         plt.ylabel("roc_auc (mean 5-fold CV)")
         plt.title(
             "roc_auc score with different max_depth and features for RF model")
+        plt.show()
         plt.close()
 
-    def cm_threshold(self, threshold, x, y, rf, file_name):
+    def cm_display(self, x, y, rf, file_name):
         """
         The function is to plot confusion matrix with set threshold
         """
         # save drfault parameters
-        print(plt.rcParams)
-        default_para = plt.rcParams
-        y_pre_threshold = []
-        for point in rf.predict_proba(x):
-            if point[1] >= threshold:
-                y_pre_threshold.append(1)
-            else:
-                y_pre_threshold.append(0)
-        else:
+        from sklearn.metrics import accuracy_score
+        y_predict = rf.predict(x)
 
-            cm = confusion_matrix(y, y_pre_threshold)
-            fig, ax = plt.subplots()
-
-            cm_display = ConfusionMatrixDisplay(cm).plot()
-
-            plt.title(
-                "RF confusion matrix threshold:{}".format(
-                    threshold))
-            cm_display.figure_.savefig(
-                '../autodata/separate_seed_result/cm_threshold{}_{}.svg'.format(
-                    threshold, file_name), dpi=300)
-            plt.show()
-            plt.close()
-        return cm
-
-    def show_roc(self,rf,X,y,file_name):
-        from sklearn import metrics
-
-        # #save drfault parameters
-        # roc for training data
-        y_probs = rf.predict_proba(X)
-        # keep probabilities for the positive outcome only
-        yhat = y_probs[:, 1]
-        print(yhat)
-        fpr, tpr, thresholds = metrics.roc_curve(y, yhat)
-        roc_auc = metrics.auc(fpr, tpr)
-        gmeans = []
-        for point in range(len(fpr)):
-            gmean = sqrt(tpr[point] * (1 - fpr[point]))
-            gmeans.append(gmean)
-        # # locate the index of the largest g-mean
-        ix = np.argmax(gmeans)
-        print('Best Threshold=%f, G-Mean=%.3f' % (thresholds[ix], gmeans[ix]))
-
-        display = metrics.RocCurveDisplay(fpr=fpr, tpr=tpr,
-                                          roc_auc=roc_auc).plot()
-        plt.title('Best Threshold=%f, G-Mean=%.3f' % (thresholds[ix], gmeans[ix]))
-        display.figure_.savefig("../autodata/separate_seed_result/RF_ROC_curve_{}_data.svg".format(file_name))
-        #plt.show()
-        plt.close()
-        ###precision_recall###
-        from sklearn.metrics import PrecisionRecallDisplay
-
-        display = PrecisionRecallDisplay.from_estimator(
-            rf, X, y, name="Random Forest"
-        )
-        precision_recall_figure = display.ax_.set_title("Precision-recall curve")
+        cm = confusion_matrix(y, y_predict)
+        cm_display = ConfusionMatrixDisplay(cm,display_labels=["logistic","irradiance","Allee"]).plot()
+        print("accuracy:{}".format(accuracy_score(y , y_predict)))
+        plt.title(
+            "RF confusion matrix ")
 
         plt.show()
         plt.close()
-        return thresholds[ix]
+        return cm
 
+    def show_roc(self,rf,X,y,file_name):
+        from sklearn.metrics import roc_curve, auc
+        import matplotlib.pyplot as plt
 
-def training(model, x, y, batch_size,epoch:int,out_fig="lstm_result_for_logistic_model_prediction/lstm_result_training_3.png",lr=0.01,optimize = "SGD"):
+        # Convert one-hot encoded labels to single-column format
+        y_true = y
+
+        # Compute the probabilities for each class
+        probas = np.array(rf.predict_proba(X))
+
+        print(probas.shape)
+        # Compute the ROC curve and AUC for each class
+        fpr = dict()
+        tpr = dict()
+        roc_auc = dict()
+        for i in range(3):
+            fpr[i], tpr[i], _ = roc_curve((y_true == i).astype(int),
+                                          probas[:,i])
+            roc_auc[i] = auc(fpr[i], tpr[i])
+
+        # Plot the ROC curves
+        plt.figure()
+        lw = 2
+        colors = ['blue', 'red', 'green']
+        model = ["logistic","irradiance","Allee"]
+        for i, color in zip(range(3), colors):
+            plt.plot(fpr[i], tpr[i], color=color, lw=lw,
+                     label='class {},ROC curve (area = {:.2})'.format(model.pop(0),roc_auc[i]))
+        plt.plot([0, 1], [0, 1], color='black', lw=lw, linestyle='--')
+        plt.xlim([0.0, 1.0])
+        plt.ylim([0.0, 1.05])
+        plt.xlabel('False Positive Rate')
+        plt.ylabel('True Positive Rate')
+        plt.title('ROC Curve')
+        plt.legend(loc="lower right")
+        plt.show()
+
+    def plot_feature_importance(self,rf,X):
+        # Plot feature importance
+        print(len(X[0]))
+        fi = pd.DataFrame(data=rf.feature_importances_,
+                          index=[str(x) for x in range(1,len(X[0])+1)],
+                          columns=['Importance']).sort_values(by=['Importance'], ascending=False)
+
+        print(fi.index)
+        ax1 = sns.barplot(data=fi.head(20), x="Importance",
+                          y=(fi.head(20)).index)
+        ax1.set_title(
+            "feature importance for RF model")
+        plt.tight_layout()
+        plt.show()
+
+def training(model, x, y, batch_size,epoch:int,image = False,lr=0.01,optimize = "SGD",weight=None):
     """
 
     :param model:
@@ -249,8 +296,17 @@ def training(model, x, y, batch_size,epoch:int,out_fig="lstm_result_for_logistic
 
     # Define loss function and optimizer
 
-    criterion = nn.BCELoss()
-    criterion = nn.CrossEntropyLoss()
+    #criterion = nn.BCELoss()
+    print(y)
+    if weight:
+        print("weighted classes")
+        print(weight)
+        class_weight = torch.tensor(weight) # weighted 3 class labels, range is in (0,1)
+        # the weight is as the same order as lass label, do not need one hot encoding for label
+        # the first weight is related to 'label 0' ...
+        criterion = nn.CrossEntropyLoss(weight=class_weight)
+    else:
+        criterion = nn.CrossEntropyLoss()
     if optimize == "SGD":
         optimizer = optim.SGD(model.parameters(), lr=learning_rate)
     elif optimize == "Adam":
@@ -264,9 +320,9 @@ def training(model, x, y, batch_size,epoch:int,out_fig="lstm_result_for_logistic
         for i, (inputs, targets) in enumerate(dataloader):
             # Zero the parameter gradients
             optimizer.zero_grad()
-
-            inputs = torch.permute(inputs, (
-            1, 0, 2))  # change to (seq_length, batch_size,input_size)
+            if not image:
+                inputs = torch.permute(inputs, (
+                1, 0, 2))  # change to (seq_length, batch_size,input_size)
 
             # Forward pass
             predict_outputs = model(inputs.float())
@@ -289,8 +345,9 @@ def training(model, x, y, batch_size,epoch:int,out_fig="lstm_result_for_logistic
 
         model.eval()  # Set the model to evaluation mode
         with torch.no_grad():
-            x = torch.permute(x, (
-                1, 0, 2))
+            if not image:
+                x = torch.permute(x, (
+                    1, 0, 2))
             predict_outputs = model(x.float())
             # print(predict_outputs)
             # print(y)
@@ -307,20 +364,22 @@ def training(model, x, y, batch_size,epoch:int,out_fig="lstm_result_for_logistic
             FP = cm[0, 1]
             FN = cm[1, 0]
             TP = cm[1, 1]
+            accuracy = accuracy_score(y,predict_label)
             print("training result")
             print("True Negatives: {}".format(TN))
             print("False Positives: {}".format(FP))
             print("False Negatives: {}".format(FN))
             print("True Positives: {}".format(TP))
-            print("accuracy:{}".format(((TN+TP)/(FP+FN+TP+TN))))
+            print("accuracy:{}".format(accuracy))
 
-    return model,((TN+TP)/(FP+FN+TP+TN))
+    return model,accuracy
 
-def test_model(x,y,model):
+def test_model(x,y,model,image=False):
     model.eval()  # Set the model to evaluation mode
     with torch.no_grad():
-        x = torch.permute(x, (
-            1, 0, 2))
+        if not image:
+            x = torch.permute(x, (
+                1, 0, 2))
         outputs = model(x.float())
         predict_label = torch.round(outputs)
         # print("predictlabel")
@@ -334,14 +393,15 @@ def test_model(x,y,model):
         FP = cm[0, 1]
         FN = cm[1, 0]
         TP = cm[1, 1]
+        accuracy = accuracy_score(y,predict_label)
         print("training result")
         print("True Negatives: {}".format(TN))
         print("False Positives: {}".format(FP))
         print("False Negatives: {}".format(FN))
         print("True Positives: {}".format(TP))
-        print("accuracy:{}".format((TN+TP)/(FP+FN+TP+TN)))
+        print("accuracy:{}".format(accuracy))
 
-    return ((TN+TP)/(FP+FN+TP+TN))
+    return accuracy,predict_label
 
 def convert_one_hot_endoding_to_label(y:torch.tensor):
     label_list =[]
@@ -354,3 +414,8 @@ def convert_one_hot_endoding_to_label(y:torch.tensor):
         label_list.append(index)
     print(label_list)
     return label_list
+
+def main():
+    print(0)
+if __name__ == '__main__' :
+    main()
