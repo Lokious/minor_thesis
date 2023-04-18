@@ -306,7 +306,7 @@ def check_scaler(scalers, scaled_data:np.array, original_data:torch.tensor):
         print(torch.sum(torch.eq(unscaled_dataset, original_data)).item() / original_data.nelement())
         #assert torch.sum(torch.eq(unscaled_dataset,original_data)).item() / original_data.nelement() == 1.0
 
-def combine_data_for_model_classification(datas=[("simulated_X_data_irradiance.csv", "simulated_label_data_irradiance.csv")], test_size=0.2,random_select=True):
+def combine_data_for_model_classification(datas=[("simulated_X_data_irradiance.csv", "simulated_label_data_irradiance.csv")], test_size=0.2,random_select=False):
 
     try:
         X = []
@@ -322,10 +322,12 @@ def combine_data_for_model_classification(datas=[("simulated_X_data_irradiance.c
 
             if random_select:
                 indexes = random.sample(range(X_tensor.shape[0]),200)
-                X_tensor = X_tensor[indexes,:,:]
-                tensor_lable = tensor_lable[:,indexes]
-                tensor_lable = torch.permute(tensor_lable,(1,0))
-                print(X_tensor.shape)
+            else:
+                indexes = range(X_tensor.shape[0])
+            X_tensor = X_tensor[indexes,:,:]
+            tensor_lable = tensor_lable[:,indexes]
+            tensor_lable = torch.permute(tensor_lable,(1,0))
+            print(X_tensor.shape)
 
             X.append(X_tensor)
             Y.append(tensor_lable)
@@ -338,7 +340,7 @@ def combine_data_for_model_classification(datas=[("simulated_X_data_irradiance.c
             x_name = data_name[0]
             y_name = data_name[1]
             X_tensor, tensor_lable = read_df_create_input_data(x_name, y_name,
-                                                               random_select=True)
+                                                               random_select=False)
             X.append(X_tensor)
             Y.append(tensor_lable)
     # concat tensor from three models
@@ -348,12 +350,13 @@ def combine_data_for_model_classification(datas=[("simulated_X_data_irradiance.c
     Y_tensor = one_hot_encoding_for_multiclass_classification(Y_tensor)
     # print(X_tensor.shape)
     # print(Y_tensor.shape)
-
+    num_classes = Y_tensor.shape[1]
     # add index to Y, use for tracing back
     index = torch.tensor(list(range(Y_tensor.shape[0])))
     index = torch.unsqueeze(index, 1)
     print(index.shape)
     Y_tensor = torch.cat((Y_tensor, index), 1)
+    print("Y tensor")
     print(Y_tensor)
 
     x_train, x_test, y_train, y_test = train_test_split(X_tensor, Y_tensor,
@@ -361,10 +364,10 @@ def combine_data_for_model_classification(datas=[("simulated_X_data_irradiance.c
                                                         random_state=123)
     import model_classify
     # remove index and save seperately
-    train_index = y_train[:, 3]
-    test_index = y_test[:, 3]
-    y_train = y_train[:, :3]
-    y_test = y_test[:, :3]
+    train_index = y_train[:, num_classes]
+    test_index = y_test[:, num_classes]
+    y_train = y_train[:, :num_classes]
+    y_test = y_test[:, :num_classes]
     label = model_classify.convert_one_hot_endoding_to_label(y_test)
     test_label_frame = pd.DataFrame(data=label, index=list(test_index.numpy()),
                                     columns=["label"])
@@ -469,7 +472,7 @@ def combine_multiple_features_to_inputX(input_features_files:list,input_Y_file:s
 
 def save_combined_feature_tensors_as_dill_files(folder="data/simulated_data/fixed_Max_range_of_parameters/"):
     """
-    Combine biomass and derivative and save as dill file
+    Combine biomass and derivative and save as dill file for each model
 
     """
     noises = ["time_dependent_noise_0.2.csv",
@@ -536,19 +539,82 @@ def read_image_and_reformat(folder="data/simulated_data/fixed_Max_range_of_param
             labels = torch.tensor(np.array(labels)) #(n_samples)
             print("data shape:{}".format(data.shape))
             #one hot encoding for label
-            #labels = one_hot_encoding_for_multiclass_classification(labels)
+            labels = one_hot_encoding_for_multiclass_classification(labels)
             print(labels.shape)
 
             # save input as dill file
             with open("{}plot/{}_Input_X".format(folder,noise_name), "wb") as dillfile:
                 dill.dump(data, dillfile)
+            torch.save(data,"{}plot/{}_Input_X.pt".format(folder,noise_name))
             with open("{}plot/{}_Input_label".format(folder,noise_name), "wb") as dillfile:
                 dill.dump(labels, dillfile)
+            torch.save(labels,"{}plot/{}_Input_label.pt".format(folder,noise_name))
+
+def read_biomass_and_filter():
+    """
+    reformat the ELOPE biomass biomass data(image DHline) later use for logistic model fitting
+    :return:
+    """
+    # read file
+    image_DH_line = pd.read_csv(
+        "biomass_remove_single_outlier.csv",header=0,index_col=0)
+    print(image_DH_line)
+    print(image_DH_line.columns)
+
+    #image_DH_line['Day'] = image_DH_line['timePoint'].str.split(':').str[-1].astype(int)
+
+    image_DH_line = image_DH_line[['genotype',"plantid",'Biomass_Estimated','Day']]
+
+    image_DH_line =image_DH_line.sort_values(by=['Day'])
+    #calculate average biomass based on gennotype
+    genotype_average_data = image_DH_line.groupby(['genotype','Day'])['Biomass_Estimated'].mean()
+
+    print(len(image_DH_line['plantid'].unique()))
+    print(len(image_DH_line['genotype'].unique()))
+    # Merge genotype average data with original data
+    merged_data = pd.merge(image_DH_line, genotype_average_data, on=['genotype','Day'],
+                           suffixes=('', '_mean'))
+    merged_data = merged_data.drop(columns=['plantid','Biomass_Estimated'])
+    merged_data = merged_data.drop_duplicates()
+
+    # # Filter out any rows where the biomass is 0 or NaN
+    filtered_data = merged_data.loc[(merged_data['Biomass_Estimated_mean'] != 0) & (
+        ~merged_data['Biomass_Estimated_mean'].isna())]
+
+    print(filtered_data)
+
+    genotype_groups = filtered_data.groupby(['genotype'])
+    reset_index_group = pd.DataFrame()
+    # create a continious time sequences from 2021-02-05 to 2021-03-24
+    time_step_df = pd.DataFrame(pd.date_range("02/05/2021", freq="D", periods=48),columns=['Day']).astype('string')
+    print(time_step_df)
+    # Shift the days to start from 0 save in column day
+    for group in genotype_groups.groups:
+        group_df = genotype_groups.get_group(group)
+        gene= group_df["genotype"].unique()[0]
+        group_df = group_df.sort_values(by=['Day'])
+        end_date = group_df.iloc[-1,1]
+        print(end_date)
+        #merge with time sequences to make sure every time series has exactly same days
+        group_df['Day'] = group_df['Day'].astype('string')
+        group_df = group_df.merge(time_step_df,on= 'Day',how= 'right')
+        group_df['genotype'] = gene
+        #find end date index, to avoid the last day's Biomass after merge is NA
+        end_index = group_df.index[group_df['Day'] == end_date].tolist()[0]
+        print(end_index)
+        group_df = group_df.iloc[int(end_index)-21:int(end_index),:]
+        group_df = group_df.reset_index(0,drop=True)
+        group_df['Day'] = group_df.index
+        reset_index_group = pd.concat([reset_index_group,group_df], ignore_index=True)
+    print(reset_index_group)
+
+    reset_index_group.to_csv("biomass_average_based_on_genotype.csv")
 
 def main():
-    # save_combined_feature_tensors_as_dill_files(
+    read_biomass_and_filter()
+    # save_combined_feature_tensors_as_dill_files( #save input for LSTM model (growth curve and derivative)
     #     folder="data/simulated_data/simulated_from_elope_data_120_no_gene_effect/")
-    read_image_and_reformat(folder="data/simulated_data/simulated_from_elope_data_120_no_gene_effect/")
+    #read_image_and_reformat(folder="data/simulated_data/simulated_from_elope_data_120_no_gene_effect/")
     #save_combined_feature_tensors_as_dill_files()
     #unittest.main()
     #read_reformat("./data/")
