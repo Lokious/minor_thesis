@@ -23,15 +23,15 @@ getwd()
 theFiles <- list.files("data/",pattern="*.txt",full.names = TRUE)
 # list the files
 theFiles
-theFiles <- sample(theFiles, 100, replace=TRUE)
-theFiles <-c('data/Emerald2002g007.txt')
-############################test for Logistic model#############################
+theFiles <- sample(theFiles, 600, replace=TRUE)
+#theFiles <-c('data/Emerald2002g007.txt')
+############################test for fitting Logistic model for silco data#############################
 logistic_Fit_parameters = data.frame()
 index <- 0
 for (textfile in theFiles){
   data = read.table(textfile)
   # fit <- smooth.Pspline(data$das, data$biomass)
-  # 
+  #
   # plot(data$das, data$biomass)
   # lines(fit, col = "blue")
   #define function
@@ -41,9 +41,9 @@ for (textfile in theFiles){
       return(list(dMdt))
     })
   }
-  
+
   #x and y
-  M <-as.numeric(data$biomass)
+  M <-as.numeric(data$biomass)/1000
   t <- as.numeric(data$das)
   y0 <- c(M = M[1])
   y0
@@ -51,19 +51,19 @@ for (textfile in theFiles){
   # #use desolve to fit the data
   # fit <- ode(y = y0, times = t, func = logistic, parms = parms)
   # parms
-  # 
+  #
   plot(t, M, pch = 16, xlab = "Time", ylab = "M")
   # lines(fit, col = "red")
-  
+
   #the first column of contains the name of the observed variable, if we only have biomass it is 'M' here
   biomass_time_df <-data.frame(name=rep("M",length(t)),time=unlist(t),M=unlist(M))
-  
+
   #the function to minimize
   ModelCost <- function(parms) {
     modelout <- as.data.frame(ode(y = y0, times = t, func = logistic, parms = parms))
     modCost(model=modelout,obs=biomass_time_df,y="M")  # object of class modCost
   }
-  
+
   Fit <- modFit(f = ModelCost, p = parms, method = "Port") #fit the curve which minimize the ModelCost
   summary(Fit)
   out <- ode(y = y0, func = logistic, parms = Fit$par,
@@ -79,6 +79,102 @@ colnames(logistic_Fit_parameters) <- c('r','Mmax','y0')
 #save fit parameters, use as the parameters for genrate the data
 write.csv(logistic_Fit_parameters,"logistics_fit_parameters.csv")
 
+#########################################Fit logistic model with EPLOE data################################
+
+# fit elope data LA estimate
+#load data
+
+
+
+library(dplyr)
+library(tidyr)
+filtered_data <- read.csv("../New Folder/data/image_DHline_data_after_average_based_on_day.csv",row.names = 1,header= TRUE)
+grouped_data <- group_by(filtered_data, genotype_name, plantid)
+genotype_average_data <- final_data %>%
+  group_by(genotype_name, DAS) %>%
+  summarise(avg_biomass = mean(Biomass_Estimated, na.rm = TRUE))
+
+# Convert to a dataframe
+genotype_average_data <- as.data.frame(genotype_average_data)
+#check if the genotype_number is correct
+unique(genotype_average_data$genotype_name)
+
+
+# load("../elope-main/ELOPE_raw_data/data_platform/platform_image_filtered.RData")
+# data_elope <- image_lines
+groups <- split(final_data,final_data$plantid)
+#groups = read.csv("")
+logistic_Fit_parameters = data.frame()
+index <- 0
+for (group in groups){
+  group <- replace(group, is.na(group), 0)
+  logistic <- function(t, y, parms) {
+    with(as.list(parms,y,t), {
+      dMdt <- r * y * (1 - y / Mmax)
+      return(list(dMdt))
+    })
+  }
+  
+
+  #x and y
+  M <-log(as.numeric(group$Biomass_Estimated))#/1000
+  t <- as.numeric(group$DAS)
+  
+  #fit spline
+  # fit <- smooth.spline(x=t,y=M)
+  # M <- predict(fit,x=t)$y
+  # y0 <- c(M = M[1])
+  # y0
+  # parms <- c(r = 0.1, Mmax = max(M))
+  # #use desolve to fit the data
+  # fit <- ode(y = y0, times = t, func = logistic, parms = parms)
+  # parms
+  #
+  plot(t, M, pch = 16, xlab = "Time", ylab = "M")
+  # lines(fit, col = "red")
+  
+  # #the first column of contains the name of the observed variable, if we only have biomass it is 'M' here
+  # biomass_time_df <-data.frame(name=rep("M",length(t)),time=unlist(t),M=unlist(M))
+  # 
+  # #the function to minimize
+  # ModelCost <- function(parms) {
+  #   modelout <- as.data.frame(ode(y = y0, times = t, func = logistic, parms = parms))
+  #   modCost(model=modelout,obs=biomass_time_df,y="M")  # object of class modCost
+  # }
+  # 
+  # Fit <- modFit(f = ModelCost, p = parms, method = "Port") #fit the curve which minimize the ModelCost
+  # summary(Fit)
+  # out <- ode(y = y0, func = logistic, parms = Fit$par,
+  #            times = t)
+  # 
+  # logistic_Fit_parameters <- rbind(logistic_Fit_parameters, c(Fit$par,y0))
+  # lines(out, col = "blue")
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ########################seems the code works for logistic ODE for one genotype and one environment###############
 
 ############################test for Irradiance model#############################
@@ -93,12 +189,12 @@ for (textfile in theFiles){
   index = index+1
   data = read.table(textfile)
   #inilize parameters and plot curve
-  M <-as.numeric(data$biomass)
+  M <-as.numeric(data$biomass)/1000
   t <- as.numeric(data$das)
   y0 <- c(M = M[1])
   biomass_time_df <-data.frame(name=rep("M",length(t)),time=unlist(t),M=unlist(M))
   plot(t, M, pch = 16, xlab = "Time", ylab = "M")
-  irradiance_parms <- c(r = 0.15, Mmax = max(M),a=-0.1,fi=60/365)
+  irradiance_parms <- c(r = 0.5, Mmax = 5,a=0.1,fi=0.18)
   #define function
   Irradiance_model <- function(t, y, irradiance_parms) {
     with(as.list(irradiance_parms,y,t), {
@@ -114,7 +210,7 @@ for (textfile in theFiles){
     modCost(model=modelout,obs=biomass_time_df,y="M")  # object of class modCost
   }
   
-  irradiance_Fit <- modFit(f = Irradiance_ModelCost, p = irradiance_parms, method = "Nelder-Mead") #fit the curve which minimize the ModelCost
+  irradiance_Fit <- modFit(f = Irradiance_ModelCost, p = irradiance_parms)#, method = "Nelder-Mead") #fit the curve which minimize the ModelCost
   #summary(irradiance_Fit) # for Port method: In summary.modFit(Fit) : Cannot estimate covariance; system is singular
   irradiance_out <- ode(y = y0, func = Irradiance_model, parms = irradiance_Fit$par,
              times = t)
@@ -124,6 +220,7 @@ for (textfile in theFiles){
 }
 ###############################################################################
 irradiance_Fit$par
+summary(irradiance_Fit)
 ############################test for temperature model#############################
 
 tempreture_parms <- c(r = 0.1, Mmax = max(M))
