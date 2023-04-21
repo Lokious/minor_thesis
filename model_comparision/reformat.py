@@ -306,7 +306,7 @@ def check_scaler(scalers, scaled_data:np.array, original_data:torch.tensor):
         print(torch.sum(torch.eq(unscaled_dataset, original_data)).item() / original_data.nelement())
         #assert torch.sum(torch.eq(unscaled_dataset,original_data)).item() / original_data.nelement() == 1.0
 
-def combine_data_for_model_classification(datas=[("simulated_X_data_irradiance.csv", "simulated_label_data_irradiance.csv")], test_size=0.2,random_select=False):
+def combine_data_for_model_classification(datas=[("simulated_X_data_irradiance.csv", "simulated_label_data_irradiance.csv")], test_size=0.2,train_size=0.8,random_select=False):
 
     try:
         X = []
@@ -319,7 +319,7 @@ def combine_data_for_model_classification(datas=[("simulated_X_data_irradiance.c
 
             print("X shape before combine data from different sde{}".format(X_tensor.shape))
             tensor_lable = dill.load(open(y_name,"rb"))
-
+            print(tensor_lable.shape)
             if random_select:
                 indexes = random.sample(range(X_tensor.shape[0]),200)
             else:
@@ -361,7 +361,7 @@ def combine_data_for_model_classification(datas=[("simulated_X_data_irradiance.c
 
     x_train, x_test, y_train, y_test = train_test_split(X_tensor, Y_tensor,
                                                         test_size=test_size,
-                                                        random_state=123)
+                                                        random_state=123,train_size=train_size)
     import model_classify
     # remove index and save seperately
     train_index = y_train[:, num_classes]
@@ -610,8 +610,85 @@ def read_biomass_and_filter():
 
     reset_index_group.to_csv("biomass_average_based_on_genotype.csv")
 
+def read_and_cpmbine_simulated_data_with_gene_effect(directory:str="data/simulated_data/simulated_with_different_gene_type/"):
+    models = ["irradiance", "logistic", "Allee", "Temperature"]
+    noises = ['time_independent_noise_0.25', 'time_dependent_noise_0.2', 'biomass_dependent_noise_0.2','without_noise']
+    for noise_type in noises:
+        snp_label = pd.DataFrame()
+        sde_model_type_label = pd.DataFrame()
+        models_biomass_df = pd.DataFrame()
+        derivative_df = pd.DataFrame()
+        for model_type in models:
+
+            x_files = glob.glob("{}simulated_X_data_{}_{}_*{}".format(directory,model_type,noise_type, ".csv"))
+            derivative_files = glob.glob("{}simulated_derivative_data_{}_{}_*{}".format(directory,model_type,noise_type, ".csv"))
+            y_files = glob.glob("{}simulated_label_data_{}_{}_*{}".format(directory,model_type,noise_type, ".csv"))
+            print(x_files)
+
+            one_model_snp = pd.DataFrame()
+            one_model_type_label = pd.DataFrame()
+            one_model_biomass = pd.DataFrame()
+            one_model_derivative = pd.DataFrame()
+            # read and merge to one csv
+            for x_file,derivative_file,y_file in zip(x_files,derivative_files,y_files):
+
+                snp1 = x_file.split(r"\\")[-1].split(".")[-2].split("_")[-4]
+                snp2 = x_file.split(r"\\")[-1].split(".")[-2].split("_")[-3]
+                snp3 = x_file.split(r"\\")[-1].split(".")[-2].split("_")[-2]
+                snp4 = x_file.split(r"\\")[-1].split(".")[-2].split("_")[-1]
+
+                # read and concat biomass
+                df_new = pd.read_csv(x_file, header=0, index_col=0)
+                models_biomass_df = pd.concat([models_biomass_df, df_new],axis=1,ignore_index=True) # concat at column
+                one_model_biomass = pd.concat([one_model_biomass, df_new],
+                                              axis=1,ignore_index=True)
+                #read and concat snps
+                number_of_samples = len(df_new.columns)
+                new_snp_df = pd.DataFrame(index=list(range(number_of_samples))) #,columns=['snp1','snp2','snp3','snp4']
+
+
+                new_snp_df = new_snp_df.assign(snp1=snp1)
+                new_snp_df = new_snp_df.assign(snp2=snp2)
+                new_snp_df = new_snp_df.assign(snp3=snp3)
+                new_snp_df = new_snp_df.assign(snp4=snp4)
+
+                one_model_snp = pd.concat([one_model_snp,new_snp_df],ignore_index=True) #label df are concat at row
+                snp_label = pd.concat([snp_label, new_snp_df],ignore_index=True)
+
+                #read and concat derivative
+                df_derivative_new = pd.read_csv(derivative_file,header=0,index_col=0)
+                derivative_df = pd.concat([derivative_df,df_derivative_new],ignore_index=True,axis=1)
+                one_model_derivative = pd.concat([one_model_derivative, df_derivative_new],
+                                          ignore_index=True,axis=1)
+
+                #read model type label
+                model_type_label = pd.read_csv(y_file, header=0, index_col=0)
+                print(model_type_label)
+                sde_model_type_label = pd.concat([sde_model_type_label,model_type_label],ignore_index=True,axis=1)
+                one_model_type_label = pd.concat([one_model_type_label,model_type_label],ignore_index=True,axis=1)
+            else:
+                #print(models_biomass_df)
+                #save differnt model inputX and label sepreately
+                #save to csv
+                one_model_biomass.to_csv(str(directory+'reformat_data/simulated_X_data_' + model_type + "_"+noise_type+".csv"))
+                one_model_derivative.to_csv(str(directory+'reformat_data/simulated_derivative_data_' + model_type + "_"+noise_type+".csv"))
+                one_model_type_label.to_csv(str(directory+'reformat_data/simulated_label_data_' + model_type + "_"+noise_type+".csv"))
+                one_model_snp.to_csv(str(directory+'reformat_data/simulated_snp_data_' + model_type + "_"+ noise_type+".csv"))
+        else:
+            print(models_biomass_df)
+            print(sde_model_type_label)
+            print(snp_label)
+            print()
+            models_biomass_df.to_csv(
+                "{}reformat_data/{}_Input_X.csv".format(directory,noise_type))
+            derivative_df.to_csv("{}reformat_data/{}_Input_derivative.csv".format(directory,noise_type))
+            sde_model_type_label.to_csv("{}reformat_data/{}_Input_label.csv".format(directory,noise_type))
+            snp_label.to_csv("{}reformat_data/{}_Input_snp.csv".format(directory,noise_type))
+
+
 def main():
-    read_biomass_and_filter()
+    #read_biomass_and_filter()
+    read_and_cpmbine_simulated_data_with_gene_effect()
     # save_combined_feature_tensors_as_dill_files( #save input for LSTM model (growth curve and derivative)
     #     folder="data/simulated_data/simulated_from_elope_data_120_no_gene_effect/")
     #read_image_and_reformat(folder="data/simulated_data/simulated_from_elope_data_120_no_gene_effect/")
