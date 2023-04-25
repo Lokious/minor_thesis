@@ -138,7 +138,9 @@ def run_lstm_parameters_prediction():
 def run_LSTM_model_for_biomass_time_dataset_3_classes(folder="data/simulated_data/fixed_Max_range_of_parameters/"):
     """
 
-    :param folder: the directory of the datasets
+    :param folder: the directory of the datasets,
+    run reformat.save_combined_feature_tensors_as_dill_files() before is function
+    if use bothe biomass and derivative for training
     :return:
     """
     x = "three_classes_classification_without_derivative"
@@ -152,6 +154,14 @@ def run_LSTM_model_for_biomass_time_dataset_3_classes(folder="data/simulated_dat
     Y_name = ["simulated_label_data_irradiance_",
               "simulated_label_data_logistic_",
               "simulated_label_data_Allee_"]
+    # X_name = ["simulated_X_data_irradiance_",
+    #         "simulated_X_data_logistic_",
+    #         "simulated_X_data_Allee_",
+    #         "simulated_X_data_Temperature_"]
+    # Y_name = ["simulated_label_data_irradiance_",
+    #           "simulated_label_data_logistic_",
+    #           "simulated_label_data_Allee_",
+    #           "simulated_label_data_Temperature_"]
     cross_validation_result = pd.DataFrame()
     for noise in noise_type:
         X_name_list = [(folder+name + noise) for name in X_name]
@@ -163,13 +173,13 @@ def run_LSTM_model_for_biomass_time_dataset_3_classes(folder="data/simulated_dat
             dataset_list)
         test_label_frame = pd.read_csv("{}_test_label.csv".format(dataset_list[0][0].replace("irradiance","")),header=0,index_col=0)
         for optimizer in ["Adam"]:
-            for lr in [0.001,0.01,0.1]:
-                for epoch in [300]:
+            for lr in [0.0001,0.1,0.001]:
+                for epoch in [600]:
                     for hidden_size in [2,6,10]:
                         for batch_size in [10,32,64]:
                             model = model_classify.LSTMModelClassification(
                                 input_size=x_train.shape[2], hidden_size=hidden_size,
-                                ouput_size=y_train.shape[1])
+                                output_size=y_train.shape[1])
                             print("optimizer:{}".format(optimizer))
                             print("lr: {}".format(lr))
                             print("hidden_size:{}".format(hidden_size))
@@ -202,9 +212,9 @@ def run_LSTM_model_for_biomass_time_dataset_3_classes(folder="data/simulated_dat
                             print(cross_validation_result)
                             test_label_frame["predict_label{}_lr{}_epoch{}_batch{}_hidden{}".format(optimizer,lr,epoch,batch_size,hidden_size)]\
                             = predict_label
-                            test_label_frame.to_csv("{}{}_test_label.csv".format(folder,dataset_list[0][0].replace("irradiance","")),header=0,index_col=0)
+                            test_label_frame.to_csv("{}{}_test_label.csv".format(folder,dataset_list[0][0].replace("irradiance","")))
                             cross_validation_result.to_csv(
-                                "{}LSTM{}_cross_validation_result_with_derivative.csv".format(folder,x))
+                                "{}LSTM{}_cross_validation_result_with_derivative_3_classes.csv".format(folder,x))
 
 def run_CNN_model_for_image_dataset_3_classes(folder='data/simulated_data/fixed_Max_range_of_parameters/'):
 
@@ -245,7 +255,7 @@ def run_CNN_model_for_image_dataset_3_classes(folder='data/simulated_data/fixed_
         test_accuracy_old = 0
         for optimizer in ["Adam"]:
             for lr in [0.02,0.01,0.001]:
-                for epoch in [30]:
+                for epoch in [300]:
                     for kernel_size in [3,5]:
                         for batch_size in [10,32,64]:
                             for stride in [9,12]:
@@ -262,9 +272,9 @@ def run_CNN_model_for_image_dataset_3_classes(folder='data/simulated_data/fixed_
                                 print("stride: {}".format(stride))
                                 model, train_accuracy = model_classify.training(
                                     model, x=x_train,
-                                    y=y_train, lr=lr, epoch=epoch, batch_size=10,
+                                    y=y_train, lr=lr, epoch=epoch, batch_size=batch_size,
                                     optimize=optimizer,image=True)
-                                test_accuracy,predict_label = model_classify.test_model(
+                                test_accuracy,predict_label,avg_auc_score = model_classify.test_model(
                                     x_test, y_test, model,image=True)
                                 if test_accuracy > test_accuracy_old:
                                     torch.save(model.state_dict(), "data/simulated_data/fixed_Max_range_of_parameters/plot/best_model")
@@ -283,29 +293,37 @@ def run_CNN_model_for_image_dataset_3_classes(folder='data/simulated_data/fixed_
                                 print(cross_validation_result)
                                 test_label_frame["predict_label_{}_{}_lr{}_epoch{}_batch{}_kernel{}_stride{}".format(noise,optimizer,lr,epoch,batch_size,kernel_size,stride)]=predict_label
                                 test_label_frame.to_csv("test_result_label.csv")
-                                # cross_validation_result.to_csv(
-                                #     "{}_cross_validation_result_with_derivative.csv".format(x))
+                                cross_validation_result.to_csv(
+                                    "CNN{}_cross_validation_result_with_derivative.csv".format(x))
 
-def run_random_forest_model_for_biomass_time_dataset_3_classes():
+def run_random_forest_model_for_biomass_time_dataset_3_classes(folder="data/simulated_data/simulated_from_elope_data_120_no_gene_effect/"):
 
     noise_type = ["time_dependent_noise_0.2.csv",
                   "time_independent_noise_0.25.csv",
                   "biomass_dependent_noise_0.2.csv", "without_noise.csv"]
     # noise_type = ["time_dependent_noise_0.2", "time_independent_noise_0.25",
     #               "biomass_dependent_noise_0.2", "without_noise"]
-    X_name = [
-        "data/simulated_data/fixed_Max_range_of_parameters/simulated_smoothed_derivative_data_irradiance_",
-        "data/simulated_data/fixed_Max_range_of_parameters/simulated_smoothed_derivative_data_logistic_",
-        "data/simulated_data/fixed_Max_range_of_parameters/simulated_smoothed_derivative_data_Allee_"]
-    Y_name = [
-        "data/simulated_data/fixed_Max_range_of_parameters/simulated_label_data_irradiance_",
-        "data/simulated_data/fixed_Max_range_of_parameters/simulated_label_data_logistic_",
-        "data/simulated_data/fixed_Max_range_of_parameters/simulated_label_data_Allee_"]
-    cross_validation_result = pd.DataFrame()
+    # X_name = [
+    #     "simulated_smoothed_derivative_data_irradiance_",
+    #     "simulated_smoothed_derivative_data_logistic_",
+    #     "simulated_smoothed_derivative_data_Allee_"]
+    # Y_name = [
+    #     "simulated_label_data_irradiance_",
+    #     "simulated_label_data_logistic_",
+    #     "simulated_label_data_Allee_"]
+    X_name = ["simulated_X_data_irradiance_",
+            "simulated_X_data_logistic_",
+            "simulated_X_data_Allee_",
+            "simulated_X_data_Temperature_"]
+    Y_name = ["simulated_label_data_irradiance_",
+              "simulated_label_data_logistic_",
+              "simulated_label_data_Allee_",
+              "simulated_label_data_Temperature_"]
+    #cross_validation_result = pd.DataFrame()
     for noise in noise_type:
         print("noise:{}".format(noise))
-        X_name_list = [(name + noise) for name in X_name]
-        Y_name_list = [(name + noise) for name in Y_name]
+        X_name_list = [(folder+name + noise) for name in X_name]
+        Y_name_list = [(folder+name + noise) for name in Y_name]
         input_X = [pd.read_csv(x, header=0, index_col=0) for x in X_name_list]
         input_Y = [pd.read_csv(x, header=0, index_col=0) for x in Y_name_list]
 
@@ -329,53 +347,129 @@ def run_random_forest_model_for_biomass_time_dataset_3_classes():
         rf.RF_model(X_train=X_train, y_train=y_train, X_test=X_test,
                     y_test=y_test, file_name="1")
 
-def add_weight_to_labels(class_weight=[0.5, 0.5, 0.25,0.25]):
+def add_weight_to_labels(folder = "data/simulated_data/fixed_Max_range_of_parameters/",class_weight=[0.25, 1,1,0.25]):
+
+     #define parameters and hyperparameters
+     kernel_size = 3
+     stride = 3
+     lr = 0.01
+     optimizer = "Adam"
+     epoch = 1000
+     batch_size = 64
      #class weight is a list which is the length of classes
      noise_type = ["without_noise","time_dependent_noise_0.2", "time_independent_noise_0.25",
                    "biomass_dependent_noise_0.2"]
 
+     '''
+          for noise in noise_type:
+              # X = dill.load(open(
+              #     "data/simulated_data/fixed_Max_range_of_parameters/plot/{}_Input_X".format(
+              #         noise), "rb"))
+              X= torch.load("{}plot/{}_Input_X.pt".format(folder,
+                      noise))
+              Y = dill.load(open(
+                  "{}plot/{}_Input_label".format(folder,
+                      noise), "rb"))
+              print("model training for {} noise".format(noise))
+              print(Y.shape)
+              num_classes = Y.shape[1]
+              # add index to Y, use for tracing back
+              index = torch.tensor(list(range(Y.shape[0])))
+              index = torch.unsqueeze(index, 1)
 
+              Y = torch.cat((Y, index), 1)
+
+              x_train, x_test, y_train, y_test = train_test_split(X, Y,
+                                                                  test_size=0.2,
+                                                                  random_state=123)
+
+              # remove index and save seperately
+              train_index = y_train[:, num_classes]
+              test_index = y_test[:, num_classes]
+              y_train = y_train[:, :num_classes]
+              y_test = y_test[:, :num_classes]
+              label = model_classify.convert_one_hot_endoding_to_label(y_test)
+              test_label_frame = pd.DataFrame(data=label,
+                                              index=list(test_index.numpy()),
+                                              columns=["label"])
+              print(test_label_frame)
+
+              label = model_classify.convert_one_hot_endoding_to_label(y_train)
+              train_label_frame = pd.DataFrame(data=label,
+                                               index=list(train_index.numpy()),
+                                               columns=["label"])
+              print(train_label_frame)
+              model = model_classify.CNNModelClassification(
+                  input_channel=x_train.shape[1], kernel_size=kernel_size,
+                  ouput_size=y_train.shape[1],
+                  input_size=[x_train.shape[-2], x_train.shape[-1]], stride=stride)
+              lstm_regression.count_parameters(model)
+              print("optimizer:{}".format(optimizer))
+              print("lr: {}".format(lr))
+              print("kernel_size:{}".format(kernel_size))
+              print("batch_size:{}".format(batch_size))
+              print("stride: {}".format(stride))
+              #without weight
+              print("without weight")
+              model, train_accuracy = model_classify.training(
+                  model, x=x_train,
+                  y=y_train, lr=lr, epoch=epoch, batch_size=batch_size,
+                  optimize=optimizer, image=True)
+              test_accuracy, predict_label,avg_auc_score = model_classify.test_model(
+                  x_test, y_test, model, image=True)
+
+              #with weight
+              print("with weight")
+              model, train_accuracy = model_classify.training(
+                  model, x=x_train,
+                  y=y_train, lr=lr, epoch=epoch, batch_size=batch_size,
+                  optimize=optimizer, image=True,weight=class_weight)
+              test_accuracy, predict_label = model_classify.test_model(
+                  x_test, y_test, model, image=True)
+              '''
+
+     # weighted LSTM
+     X_name = ["simulated_X_data_irradiance_",
+               "simulated_X_data_logistic_",
+               "simulated_X_data_Allee_",
+               "simulated_X_data_Temperature_"]
+     Y_name = ["simulated_label_data_irradiance_",
+               "simulated_label_data_logistic_",
+               "simulated_label_data_Allee_",
+               "simulated_label_data_Temperature_"]
+     cross_validation_result = pd.DataFrame()
      for noise in noise_type:
-         X = dill.load(open(
-             "data/simulated_data/fixed_Max_range_of_parameters/plot/{}_Input_X".format(
-                 noise), "rb"))
-         Y = dill.load(open(
-             "data/simulated_data/fixed_Max_range_of_parameters/plot/{}_Input_label".format(
-                 noise), "rb"))
+         X_name_list = [(folder + name + noise) for name in X_name]
+         Y_name_list = [(folder + name + noise) for name in Y_name]
+         dataset_list = list(zip(X_name_list, Y_name_list))
          print("model training for {} noise".format(noise))
-         print(Y.shape)
-
-         # add index to Y, use for tracing back
-         index = torch.tensor(list(range(Y.shape[0])))
-         index = torch.unsqueeze(index, 1)
-
-         Y = torch.cat((Y, index), 1)
-
-         x_train, x_test, y_train, y_test = train_test_split(X, Y,
-                                                             test_size=0.2,
-                                                             random_state=123)
-         # remove index and save seperately
-         train_index = y_train[:, 3]
-         test_index = y_test[:, 3]
-         y_train = y_train[:, :3]
-         y_test = y_test[:, :3]
-         label = model_classify.convert_one_hot_endoding_to_label(y_test)
-         test_label_frame = pd.DataFrame(data=label,
-                                         index=list(test_index.numpy()),
-                                         columns=["label"])
-         print(test_label_frame)
-
-         label = model_classify.convert_one_hot_endoding_to_label(y_train)
-         train_label_frame = pd.DataFrame(data=label,
-                                          index=list(train_index.numpy()),
-                                          columns=["label"])
-         print(train_label_frame)
+         # print(dataset_list)
+         x_train, x_test, y_train, y_test, scaler_X_train, scaler_X_test = reformat.combine_data_for_model_classification(
+             dataset_list)
+         hidden_size = 10
+         model = model_classify.LSTMModelClassification(
+             input_size=x_train.shape[2], hidden_size=hidden_size,
+             output_size=y_train.shape[1])
+         print("optimizer:{}".format(optimizer))
+         print("lr: {}".format(lr))
+         print("hidden_size:{}".format(hidden_size))
+         print("batch_size:{}".format(batch_size))
+         model, train_accuracy = model_classify.training(
+             model, x=x_train,
+             y=y_train, lr=lr, epoch=epoch, batch_size=batch_size,
+             optimize=optimizer)
+         test_accuracy, predict_label,avg_auc_score = model_classify.test_model(
+             x_test, y_test, model)
 
 
 def main():
     # run_lstm_parameters_prediction()
+    # run_random_forest_model_for_biomass_time_dataset_3_classes(
+    #         folder="data/simulated_data/simulated_from_elope_data_120_no_gene_effect/")
+
+    add_weight_to_labels(folder="data/simulated_data/simulated_from_elope_data_120_no_gene_effect/")
     # x = 'simulated_X_data_test'
-    run_LSTM_model_for_biomass_time_dataset_3_classes(folder="data/simulated_data/simulated_from_elope_data_120_no_gene_effect/")
+    #run_LSTM_model_for_biomass_time_dataset_3_classes(folder="data/simulated_data/simulated_from_elope_data_120_no_gene_effect/")
     #run_CNN_model_for_image_dataset_3_classes()
     # tain_loss, test_loss = run_lstm_forcaseting(ratio_of_label=0.5,
     #                                             learning_rate=0.1,

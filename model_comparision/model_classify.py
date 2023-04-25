@@ -1,6 +1,7 @@
 import dill
 import pandas as pd
 import torch
+import torchmetrics
 from torch import nn
 import torch.optim as optim
 from torch.utils.data import TensorDataset, DataLoader
@@ -25,21 +26,23 @@ from sklearn.model_selection import GroupShuffleSplit
 from sklearn.metrics import make_scorer
 from sklearn.metrics import matthews_corrcoef
 from sklearn.metrics import precision_score, accuracy_score, plot_roc_curve, RocCurveDisplay,ConfusionMatrixDisplay, roc_auc_score, roc_curve
+from torchmetrics import CohenKappa, AUROC
 
 
 class LSTMModelClassification(nn.Module):
 
     # less parameters compare to LSTM
-    def __init__(self, input_size, hidden_size,ouput_size, num_layers=2, dropout=0.1):
+    def __init__(self, input_size, hidden_size, output_size, num_layers=2, dropout=0.1):
         super().__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
+        self.output_size = output_size
         self.num_layers = num_layers
         self.lstm = nn.LSTM(input_size=input_size, hidden_size=hidden_size,num_layers=num_layers,
                             dropout=dropout)
 
-        self.fc = nn.Linear(hidden_size, ouput_size)
-        self.sigmoid = nn.Sigmoid()
+        self.fc = nn.Linear(hidden_size, output_size)
+        self.softmax = nn.Softmax(dim=1) #https://stackoverflow.com/questions/42081257/why-binary-crossentropy-and-categorical-crossentropy-give-different-performances/46038271#46038271
 
     def forward(self, x):
         # run when everytime we call this model
@@ -54,10 +57,9 @@ class LSTMModelClassification(nn.Module):
 
         # Forward propagate LSTM
         output, _ = self.lstm(x, (h0, c0))
-
         # take the output of the last time step, feed it in to a fully connected layer
         output = self.fc(output[-1, :, :])
-        output_label = self.sigmoid(output)
+        output_label = self.softmax(output)
 
         return output_label
 
@@ -109,7 +111,7 @@ class CNNModelClassification(nn.Module):
         # dropout
         self.drop_out = nn.Dropout(p=dropout)
         self.linear = nn.Linear(3*pooling_out_size*pooling_out_size, ouput_size)
-        self.sigmoid = nn.Sigmoid()
+        self.softmax = nn.Softmax(dim=1)
 
     def forward(self, x):
         # Forward propagate CNN
@@ -132,7 +134,7 @@ class CNNModelClassification(nn.Module):
 
         flatten_out = self.linear(flatten_out)
 
-        output_label = self.sigmoid(flatten_out)
+        output_label = self.softmax(flatten_out)
         return output_label
 
     def init_network(self):
@@ -143,6 +145,48 @@ class CNNModelClassification(nn.Module):
             elif 'bias' in name:
                 nn.init.constant_(param, 0.0)
 
+class LSTM_snp_classification(nn.Module):
+
+    # less parameters compare to LSTM
+    def __init__(self, input_size, hidden_size, num_layers=2, dropout=0.1):
+        super().__init__()
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+        self.num_layers = num_layers
+        self.lstm = nn.LSTM(input_size=input_size, hidden_size=hidden_size,num_layers=num_layers,
+                            dropout=dropout)
+        self.fc = nn.Linear(hidden_size, 3)
+        # output from 0 to 1
+        self.softmax = nn.Softmax(dim=1)
+
+    def forward(self, x):
+        # run when we call this model
+        #print("forward")
+        # Initialize
+
+        # h0 shape：(num_layers * num_directions, batch, hidden_size)
+        # c0 shape：(num_layers * num_directions, batch, hidden_size)
+        h0 = torch.zeros(self.num_layers, x.size(1), self.hidden_size).to(
+            x.device)
+        c0 = torch.zeros(self.num_layers, x.size(1), self.hidden_size).to(
+            x.device)
+
+        # Forward propagate LSTM
+        output, _ = self.lstm(x, (h0, c0))
+
+        # take the output of the last time step, feed it in to a fully connected layer
+        output = self.fc(output[-1, :, :])
+        output = self.softmax(output)
+
+        return output
+
+    def init_network(self):
+        # initialize weight and bias
+        for name, param in self.named_parameters():
+            if 'weight' in name:
+                nn.init.xavier_uniform_(param)
+            elif 'bias' in name:
+                nn.init.constant_(param, 0.0)
 
 
 class RandomForest():
@@ -151,7 +195,7 @@ class RandomForest():
 
         hyperparameters = {'n_estimators': [100,500],
                            'max_features': [0.3,0.5,0.7],
-                           'max_depth' : [10,]
+                           'max_depth' : [20,]
                            }
 
         rf_cv = GridSearchCV(
@@ -201,7 +245,7 @@ class RandomForest():
         y_predict = rf.predict(x)
 
         cm = confusion_matrix(y, y_predict)
-        cm_display = ConfusionMatrixDisplay(cm,display_labels=["logistic","irradiance","Allee"]).plot()
+        cm_display = ConfusionMatrixDisplay(cm,display_labels=["logistic","irradiance","Allee","temperature"]).plot()
         print("accuracy:{}".format(accuracy_score(y , y_predict)))
         plt.title(
             "RF confusion matrix ")
@@ -225,7 +269,7 @@ class RandomForest():
         fpr = dict()
         tpr = dict()
         roc_auc = dict()
-        for i in range(3):
+        for i in range(4):
             fpr[i], tpr[i], _ = roc_curve((y_true == i).astype(int),
                                           probas[:,i])
             roc_auc[i] = auc(fpr[i], tpr[i])
@@ -233,9 +277,9 @@ class RandomForest():
         # Plot the ROC curves
         plt.figure()
         lw = 2
-        colors = ['blue', 'red', 'green']
-        model = ["logistic","irradiance","Allee"]
-        for i, color in zip(range(3), colors):
+        colors = ['blue', 'red', 'green','orange']
+        model = ["logistic","irradiance","Allee",'temperature']
+        for i, color in zip(range(4), colors):
             plt.plot(fpr[i], tpr[i], color=color, lw=lw,
                      label='class {},ROC curve (area = {:.2})'.format(model.pop(0),roc_auc[i]))
         plt.plot([0, 1], [0, 1], color='black', lw=lw, linestyle='--')
@@ -328,6 +372,9 @@ def training(model, x, y, batch_size,epoch:int,image = False,lr=0.01,optimize = 
             predict_outputs = model(inputs.float())
             # predict_outputs = predict_outputs.float()
             targets = targets.float()
+            # print("before calculate loss ")
+            # print(predict_outputs)
+            # print(targets)
             loss = criterion(predict_outputs, targets)
 
             # Backward pass and optimize
@@ -381,27 +428,31 @@ def test_model(x,y,model,image=False):
             x = torch.permute(x, (
                 1, 0, 2))
         outputs = model(x.float())
+
+
         predict_label = torch.round(outputs)
         # print("predictlabel")
         # print(predict_label)
         predict_label = convert_one_hot_endoding_to_label(predict_label)
         y = convert_one_hot_endoding_to_label(y)
-        cm = confusion_matrix(y, predict_label)
 
+        avg_auc_score = calculate_AUC_score_for_tensor_prediction_out_put(outputs,
+                                                          y)
+        cm = confusion_matrix(y, predict_label)
+        cm_display = ConfusionMatrixDisplay(cm, display_labels=["logistic",
+                                                                "irradiance",
+                                                                "Allee",
+                                                                "temperature"]).plot()
+        print("test accuracy:{}".format(accuracy_score(y, predict_label)))
+        plt.title(
+            "LSTM test result confusion matrix ")
+        # plt.show()
+        # plt.close()
         print(cm)
-        TN = cm[0, 0]
-        FP = cm[0, 1]
-        FN = cm[1, 0]
-        TP = cm[1, 1]
         accuracy = accuracy_score(y,predict_label)
-        print("training result")
-        print("True Negatives: {}".format(TN))
-        print("False Positives: {}".format(FP))
-        print("False Negatives: {}".format(FN))
-        print("True Positives: {}".format(TP))
         print("accuracy:{}".format(accuracy))
 
-    return accuracy,predict_label
+    return accuracy,predict_label,avg_auc_score
 
 def convert_one_hot_endoding_to_label(y:torch.tensor):
     label_list =[]
@@ -414,6 +465,23 @@ def convert_one_hot_endoding_to_label(y:torch.tensor):
         label_list.append(index)
     print(label_list)
     return label_list
+
+def calculate_AUC_score_for_tensor_prediction_out_put(predicted_probs, true_labels):
+
+    #convert list to tensor
+    true_labels = torch.tensor(true_labels)
+
+    auroc = AUROC(task="multiclass", num_classes=4)
+
+    avg_auc_score = auroc(predicted_probs, true_labels)
+    return avg_auc_score
+
+def calculate_cohenkappa_score_for_tensor_prediction_out_put(predicted_label,true_labels_onehot):
+    """ Calculate CohenKappa_score"""
+
+    cohenkappa = CohenKappa(task="multiclass", num_classes=true_labels_onehot.shape[1])
+    cohenkappa_score =cohenkappa(predicted_label, true_labels_onehot)
+    return cohenkappa_score
 
 def main():
     print(0)

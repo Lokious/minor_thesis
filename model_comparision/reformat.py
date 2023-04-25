@@ -92,7 +92,11 @@ def read_df_create_input_data(inputX,inputY,random_select=False):
     Y_df = pd.read_csv(inputY,index_col=0)
     print(X_df,Y_df)
     # the column is related to number of samples, which should be the same length
-    assert len(X_df.columns) == len(Y_df.columns)
+    try:
+        assert len(X_df.columns) == len(Y_df.columns)
+    except:
+        Y_df = Y_df.T
+        assert len(X_df.columns) == len(Y_df.columns)
     Y_df.columns = X_df.columns
     #replace inf and -inf as NA
     X_df.replace([np.inf, -np.inf], np.nan, inplace=True)
@@ -306,7 +310,7 @@ def check_scaler(scalers, scaled_data:np.array, original_data:torch.tensor):
         print(torch.sum(torch.eq(unscaled_dataset, original_data)).item() / original_data.nelement())
         #assert torch.sum(torch.eq(unscaled_dataset,original_data)).item() / original_data.nelement() == 1.0
 
-def combine_data_for_model_classification(datas=[("simulated_X_data_irradiance.csv", "simulated_label_data_irradiance.csv")], test_size=0.2,train_size=0.8,random_select=False):
+def combine_data_for_model_classification(datas=[("simulated_X_data_irradiance.csv", "simulated_label_data_irradiance.csv")], test_size=0.2,train_size=0.8,random_select=False,snp_convert=False):
 
     try:
         X = []
