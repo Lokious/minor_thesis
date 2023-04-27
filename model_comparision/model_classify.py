@@ -175,7 +175,7 @@ class LSTM_snp_classification(nn.Module):
         output, _ = self.lstm(x, (h0, c0))
 
         # take the output of the last time step, feed it in to a fully connected layer
-        output = self.fc(output[-1, :, :])
+        output = self.fc(output[-1, :, :],)
         output = self.softmax(output)
 
         return output
@@ -439,10 +439,10 @@ def test_model(x,y,model,image=False):
         avg_auc_score = calculate_AUC_score_for_tensor_prediction_out_put(outputs,
                                                           y)
         cm = confusion_matrix(y, predict_label)
-        cm_display = ConfusionMatrixDisplay(cm, display_labels=["logistic",
-                                                                "irradiance",
-                                                                "Allee",
-                                                                "temperature"]).plot()
+        # cm_display = ConfusionMatrixDisplay(cm, display_labels=["logistic",
+        #                                                         "irradiance",
+        #                                                         "Allee",
+        #                                                         "temperature"]).plot()
         print("test accuracy:{}".format(accuracy_score(y, predict_label)))
         plt.title(
             "LSTM test result confusion matrix ")
@@ -470,8 +470,8 @@ def calculate_AUC_score_for_tensor_prediction_out_put(predicted_probs, true_labe
 
     #convert list to tensor
     true_labels = torch.tensor(true_labels)
-
-    auroc = AUROC(task="multiclass", num_classes=4)
+    print(len(true_labels.unique()))
+    auroc = AUROC(task="multiclass", num_classes=len(true_labels.unique()))
 
     avg_auc_score = auroc(predicted_probs, true_labels)
     return avg_auc_score

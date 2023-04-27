@@ -554,6 +554,110 @@ def read_image_and_reformat(folder="data/simulated_data/fixed_Max_range_of_param
                 dill.dump(labels, dillfile)
             torch.save(labels,"{}plot/{}_Input_label.pt".format(folder,noise_name))
 
+
+def read_image_and_reformat_for_snps_prediction(directory="data/simulated_data/simulated_with_different_gene_type/plot/"):
+    """
+    reformat and stack the images to shape:(n_samples, depth, height, width)
+    """
+    models = ["irradiance", "logistic", "Allee", "Temperature"]
+    noises = ['time_independent_noise_0.25', 'time_dependent_noise_0.2',
+              'biomass_dependent_noise_0.2', 'without_noise']
+    label_dict = {'logistic': 0, 'irradiance': 1, 'Allee': 2, 'Temperature': 3}
+    for noise_type in noises:
+        snp_label = pd.DataFrame()
+        sde_model_type_label = pd.DataFrame()
+        image_np_list = []
+        for model_type in models:
+            # example file name: simulated_X_data_Allee_biomass_dependent_noise_0.2_0_0_0_0_2_.tiff
+            x_files = glob.glob(
+                "{}growth_curve/simulated_X_data_{}_{}_*{}".format(directory, model_type,
+                                                      noise_type, ".tiff"))
+            derivative_files = glob.glob(
+                "{}smooth_derivative/simulated_X_data_{}_{}_*{}".format(directory,
+                                                               model_type,
+                                                               noise_type,
+                                                               ".tiff"))
+
+
+            number_of_samples = len(x_files)
+            print("number of samples {}".format(number_of_samples))
+            # read and merge to one csv
+            for growth_curve_image, derivative_image in zip(x_files,
+                                                       derivative_files):
+
+                snp1 = growth_curve_image.split(r"\\")[-1].split(".")[-2].split("_")[-6]
+                snp2 = growth_curve_image.split(r"\\")[-1].split(".")[-2].split("_")[-5]
+                snp3 = growth_curve_image.split(r"\\")[-1].split(".")[-2].split("_")[-4]
+                snp4 = growth_curve_image.split(r"\\")[-1].split(".")[-2].split("_")[-3]
+                count_number = growth_curve_image.split(r"\\")[-1].split(".")[-2].split("_")[-2]
+                print(snp1,snp2,snp3,snp4,count_number)
+                # read growth curve (biomass)
+                growth_curve_array = cv2.imread(growth_curve_image)
+                # Convert the image to grayscale
+                gray_growth_curve_array = cv2.cvtColor(growth_curve_array,
+                                                       cv2.COLOR_BGR2GRAY)
+                gray_growth_curve_array = cv2.normalize(
+                    gray_growth_curve_array, None, 0, 1.0,
+                    cv2.NORM_MINMAX,
+                    dtype=cv2.CV_32F)
+
+                # read and concat derivative
+                derivative_array = cv2.imread(derivative_image)
+                # Convert the image to grayscale
+                gray_derivative_array = cv2.cvtColor(derivative_array,
+                                                     cv2.COLOR_BGR2GRAY)
+                gray_derivative_array = cv2.normalize(gray_derivative_array,
+                                                      None, 0, 1.0,
+                                                      cv2.NORM_MINMAX,
+                                                      dtype=cv2.CV_32F)
+
+
+                input_images = np.stack([gray_growth_curve_array,gray_derivative_array],axis=0)
+                print(input_images.shape)
+                # Add the image and its snplabel to the dataset arrays
+                image_np_list.append([input_images])
+                ## read and concat snps
+                new_snp_df = pd.DataFrame({"snp1":snp1,"snp2":snp2,"snp3":snp3,"snp4":snp4},index=[0])  # ,columns=['snp1','snp2','snp3','snp4']
+
+                snp_label = pd.concat([snp_label, new_snp_df],
+                                      ignore_index=True)
+            else:
+                # read model type label
+                model_type_label = pd.DataFrame(columns=["model_type"],
+                                                index=range(number_of_samples))
+                model_type_label = model_type_label.assign(model_type=label_dict[model_type])
+                print(model_type_label)
+                sde_model_type_label = pd.concat(
+                    [sde_model_type_label, model_type_label],
+                    ignore_index=True)
+        else:
+
+            data = torch.tensor(np.array(
+                image_np_list).squeeze())  # shape (n_samples,n_features,height,width)
+            print(snp_label)
+            snp_label = torch.tensor(snp_label.values.astype(np.float32))  # (n_samples,4)
+            print("data shape:{}".format(data.shape))
+            print("snp label tensor")
+            print(snp_label.shape)
+            print(snp_label)
+            # one hot encoding for model label
+            print(sde_model_type_label)
+            sde_model_type_label = torch.tensor(sde_model_type_label.values.astype(np.float32))
+            labels = one_hot_encoding_for_multiclass_classification(sde_model_type_label)
+
+            print("datashape before saving")
+            print(data.shape)
+            # save input as dill file
+            with open("{}{}_Input_X".format(directory,noise_type), "wb") as dillfile:
+                dill.dump(data, dillfile)
+            #torch.save(data,"{}plot/{}_Input_X.pt".format(directory,noise_type))
+            with open("{}{}_Input_snps_label".format(directory,noise_type), "wb") as dillfile:
+                dill.dump(snp_label, dillfile) #save snp labels without onehotencoding
+            with open("{}{}_Input_sde_label".format(directory, noise_type),
+                      "wb") as dillfile:
+                dill.dump(labels,
+                          dillfile)  # save model labels after onehotencoding
+
 def read_biomass_and_filter():
     """
     reformat the ELOPE biomass biomass data(image DHline) later use for logistic model fitting
@@ -615,6 +719,12 @@ def read_biomass_and_filter():
     reset_index_group.to_csv("biomass_average_based_on_genotype.csv")
 
 def read_and_cpmbine_simulated_data_with_gene_effect(directory:str="data/simulated_data/simulated_with_different_gene_type/"):
+    """
+    read csv file, combine data for LSTM model
+    :param directory: the directory of files
+    :return:
+    """
+
     models = ["irradiance", "logistic", "Allee", "Temperature"]
     noises = ['time_independent_noise_0.25', 'time_dependent_noise_0.2', 'biomass_dependent_noise_0.2','without_noise']
     for noise_type in noises:
@@ -692,7 +802,8 @@ def read_and_cpmbine_simulated_data_with_gene_effect(directory:str="data/simulat
 
 def main():
     #read_biomass_and_filter()
-    read_and_cpmbine_simulated_data_with_gene_effect()
+    #read_and_cpmbine_simulated_data_with_gene_effect()
+    read_image_and_reformat_for_snps_prediction()
     # save_combined_feature_tensors_as_dill_files( #save input for LSTM model (growth curve and derivative)
     #     folder="data/simulated_data/simulated_from_elope_data_120_no_gene_effect/")
     #read_image_and_reformat(folder="data/simulated_data/simulated_from_elope_data_120_no_gene_effect/")

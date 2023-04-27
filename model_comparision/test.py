@@ -1,3 +1,4 @@
+import dill
 import matplotlib.pyplot as plt
 import torch
 
@@ -110,42 +111,44 @@ def run_LSTM_model_for_biomass_time_dataset_4_classes(folder="data/simulated_dat
                                     "{}LSTM{}_cross_validation_result_with_derivative_4_classes.csv".format(
                                         folder, x))
 
-def predict_simulated_snps(folder="data/simulated_data/simulated_with_different_gene_type/reformat_data/"):
+def predict_simulated_snps_LSTM(folder="data/simulated_data/simulated_with_different_gene_type/reformat_data/"):
     noise_type = ["time_dependent_noise_0.2", "time_independent_noise_0.25",
                   "biomass_dependent_noise_0.2", "without_noise"]
+    for snp_index in range(4):
+        cross_validation_result = pd.DataFrame()
+        for noise in noise_type:
+            #read x growth curve and derivative
 
-    for noise in noise_type:
-        #read x growth curve and derivative
+            input_biomass = "data/simulated_data/simulated_with_different_gene_type/reformat_data/{}_Input_X.csv".format(noise)
+            input_derivate = "data/simulated_data/simulated_with_different_gene_type/reformat_data/{}_Input_derivative.csv".format(noise)
+            #read snps as label y
+            y = "data/simulated_data/simulated_with_different_gene_type/reformat_data/{}_Input_snp.csv".format(noise)
+            X_tensor1, tensor_lable = reformat.read_df_create_input_data(input_biomass, y,
+                                                                       random_select=False)
+            X_tensor2, tensor_lable = reformat.read_df_create_input_data(input_derivate, y,
+                                                                       random_select=False)
 
-        input_biomass = "data/simulated_data/simulated_with_different_gene_type/reformat_data/{}_Input_X.csv".format(noise)
-        input_derivate = "data/simulated_data/simulated_with_different_gene_type/reformat_data/{}_Input_derivative.csv".format(noise)
-        #read snps as label y
-        y = "data/simulated_data/simulated_with_different_gene_type/reformat_data/{}_Input_snp.csv".format(noise)
-        X_tensor1, tensor_lable = reformat.read_df_create_input_data(input_biomass, y,
-                                                                   random_select=False)
-        X_tensor2, tensor_lable = reformat.read_df_create_input_data(input_derivate, y,
-                                                                   random_select=False)
+            X_tensor= torch.concat([X_tensor1,X_tensor2],dim=-1)
 
-        X_tensor= torch.concat([X_tensor1,X_tensor2],dim=-1)
 
-        for snp_index in range(4):
 
             test_index, x_train,x_test, y_test, y_train,label = perfrom_train_test_split_for_snps_and_save_test_index(
                 X_tensor, snp_index, tensor_lable)
             test_label_frame = pd.DataFrame(data=label,
                                             index=list(test_index.numpy()),
-                                            columns=["snp_{}".format(snp_index+1)])
+                                            columns=["snp_{}".format(str(snp_index+1))])
             print(test_label_frame)
             print(x_train.shape,y_train.shape)
-            cross_validation_result = pd.DataFrame()
+
             for optimizer in ["Adam"]:
-                for lr in [0.005, 0.01, 0.001]:
-                    for epoch in [300]:
+                for lr in [0.05, 0.01, 0.1]:
+                    for epoch in [300,500]:
                         for hidden_size in [2, 6, 10]:
                             for batch_size in [10, 32, 64]:
                                 model = model_classify.LSTM_snp_classification(
                                     input_size=x_train.shape[2],
                                     hidden_size=hidden_size)
+                                lstm_regression.count_parameters(model)
                                 print("optimizer:{}".format(optimizer))
                                 print("lr: {}".format(lr))
                                 print("hidden_size:{}".format(hidden_size))
@@ -185,11 +188,92 @@ def predict_simulated_snps(folder="data/simulated_data/simulated_with_different_
                                         hidden_size)] \
                                     = predict_label
                                 test_label_frame.to_csv(
-                                    "{}_test_snps.csv".format("data/simulated_data/simulated_with_different_gene_type/reformat_data/"))
+                                    "{}_test_snps{}.csv".format("data/simulated_data/simulated_with_different_gene_type/reformat_data/",str(snp_index+1)))
 
                                 cross_validation_result.to_csv(
                                     "{}LSTM_snp{}_cross_validation_result_with_derivative_.csv".format(
-                                        folder,snp_index+1 ))
+                                        folder,str(snp_index+1) ))
+
+def predict_simulated_snps_CNN(folder="data/simulated_data/simulated_with_different_gene_type/plot/"):
+    noise_type = ["time_dependent_noise_0.2", "time_independent_noise_0.25",
+                  "biomass_dependent_noise_0.2", "without_noise"]
+    for snp_index in range(4):
+        cross_validation_result = pd.DataFrame()
+        for noise in noise_type:
+            #read x growth curve and derivative
+            X_tensor = dill.load(open("{}{}_Input_X".format(folder,noise), "rb"))
+            tensor_lable = dill.load(open("{}{}_Input_snps_label".format(folder,noise), "rb"))
+
+            test_index, x_train,x_test, y_test, y_train,label = perfrom_train_test_split_for_snps_and_save_test_index(
+                X_tensor, snp_index, tensor_lable)
+            test_label_frame = pd.DataFrame(data=label,
+                                            index=list(test_index.numpy()),
+                                            columns=["snp_{}".format(str(snp_index+1))])
+            print(test_label_frame)
+            print(x_train.shape,y_train.shape)
+
+            for optimizer in ["Adam"]:
+                for lr in [0.05, 0.01, 0.1]:
+                    for epoch in [500]:
+                        for kernel in [3,5]:
+                            for batch_size in [10, 32, 64]:
+                                for stride in [3,9,12]:
+                                    model = model_classify.CNNModelClassification(
+                                        input_channel=x_train.shape[1],
+                                        kernel_size=kernel,
+                                        ouput_size=y_train.shape[1],
+                                        input_size=[x_train.shape[-2],
+                                                    x_train.shape[-1]],
+                                        stride=stride)
+                                lstm_regression.count_parameters(model)
+                                print("optimizer:{}".format(optimizer))
+                                print("lr: {}".format(lr))
+                                print("kernel_size:{}".format(kernel))
+                                print("batch_size:{}".format(batch_size))
+                                print("stride: {}".format(stride))
+                                model, train_accuracy = model_classify.training(
+                                    model, x=x_train,
+                                    y=y_train, lr=lr, epoch=epoch,
+                                    batch_size=batch_size,
+                                    optimize=optimizer,image=True)
+                                test_accuracy, predict_label, avg_auc_score = model_classify.test_model(
+                                    x_test, y_test, model,image=True)
+                                print({"noise_type": noise,
+                                       "optimizer": optimizer, "lr": lr,
+                                       "num_epoch": epoch,
+                                       "batch_size": batch_size,
+                                       "kernel": kernel,
+                                       "stride":stride,
+                                       "train_accuracy": train_accuracy,
+                                       "test_accuracy": test_accuracy,
+                                       "avg_auc_score": avg_auc_score})
+                                new_row = pd.DataFrame(
+                                    data={"noise_type": noise,
+                                           "optimizer": optimizer,
+                                           "lr": lr,
+                                           "num_epoch": epoch,
+                                           "batch_size": batch_size,
+                                           "kernel": kernel,
+                                           "stride":stride,
+                                           "train_accuracy": train_accuracy,
+                                           "test_accuracy": test_accuracy,
+                                           "avg_auc_score": avg_auc_score},
+                                    index=[0])
+
+                                cross_validation_result = pd.concat(
+                                    [cross_validation_result, new_row])
+                                print(cross_validation_result)
+                                test_label_frame[
+                                    "predict_label{}_lr{}_epoch{}_batch{}kernel{}stride{}noise{}".format(
+                                        optimizer, lr, epoch, batch_size,
+                                        kernel,stride,noise)] \
+                                    = predict_label
+                                test_label_frame.to_csv(
+                                    "{}_test_snps_CNN{}.csv".format(folder,str(snp_index+1)))
+
+                                cross_validation_result.to_csv(
+                                    "{}CNN_snp{}_cross_validation_result_with_derivative.csv".format(
+                                        folder,str(snp_index+1)))
 
 def perfrom_train_test_split_for_snps_and_save_test_index(X_tensor, snp_index,
                                                           tensor_lable):
@@ -225,7 +309,8 @@ def perfrom_train_test_split_for_snps_and_save_test_index(X_tensor, snp_index,
 
 
 def main():
-    predict_simulated_snps()
+    #predict_simulated_snps_LSTM()
+    predict_simulated_snps_CNN()
     #run_LSTM_model_for_biomass_time_dataset_4_classes(folder="data/simulated_data/simulated_from_elope_data_120_no_gene_effect/",weighted=[0.5, 0.5, 0.5, 0.25])
     # run_LSTM_model_for_biomass_time_dataset_4_classes(folder
     #  ="data/simulated_data/simulated_with_different_gene_type/reformat_data/",x="withe_gene_effect")
