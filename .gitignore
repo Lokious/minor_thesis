@@ -1,5 +1,5 @@
-data/*.txt
-data/*.csv
+New folder/data/*.txt
+New folder/data/*.csv
 New folder/*
 elope-main/*
 GWAS_DHs_landraces/*
@@ -11,4 +11,4 @@ model_comparision/data/simulated_data/simulated_from_elope_data_120_no_gene_effe
 model_comparision/data/simulated_data/simulated_from_elope_data_120_no_gene_effect/plot/*.pt
 model_comparision/data/simulated_data/fixed_Max_range_of_parameters/plot/*.pt
 model_comparision/data/simulated_data/simulated_from_elope_data_120_no_gene_effect/plot/*Input_X
-File model_comparision/data/simulated_data/simulated_with_different_gene_type/plot/*Input_X
+model_comparision/data/simulated_data/simulated_with_different_gene_type/plot/*_Input_X
