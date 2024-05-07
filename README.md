@@ -8,3 +8,4 @@
 	-
 ### data simulation: use SDE model to generate plant growth cureves(4 types limitation and 4 types noise)
 ### classification: CNN + LSTM are used for plant growth limitation classify
+	data from 'model_comparision/data/simulated_data/no_fixed_Max/' are used for classification
