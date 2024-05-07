@@ -2,7 +2,6 @@ New folder/data/*.txt
 New folder/data/*.csv
 New folder/*
 elope-main/*
-GWAS_DHs_landraces/
 model_comparision/reformat_biomass*
 model_comparision/biomass_average_based_on_genotype.csv
 model_comparision/eploe_*
