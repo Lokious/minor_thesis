@@ -144,6 +144,7 @@ def create_input_data(snp_df: str = "../data/chosen_snps_map.csv",
         data_prepare(simulated_dataset=Xs, label_df=merge_traits_snps, snp=snp,save_directory=save_directory)
 
 def keep_overlap_plant_for_input_data(file_directory:str="../data/spline_extract_features/",file_name_end_with:str="*_reformat.csv"):
+    """read reformat data from spline predicted features and only keep plantsid present in all files"""
 
     files = glob.glob("{}{}".format(file_directory,file_name_end_with))
     print(files)
@@ -162,6 +163,7 @@ def keep_overlap_plant_for_input_data(file_directory:str="../data/spline_extract
     for df in df_list:
         df_remove_no_overlap = df[list(overlap_plant_id)]
         overlap_dfs_list.append(df_remove_no_overlap)
+        print(df_remove_no_overlap)
 
     #files = glob.glob("{}{}".format(file_directory, "*predict_withp_spline.csv"))
 
@@ -246,12 +248,14 @@ def main():
     #                              index_col=0)
     # Xs = [new_df_LA, new_df_Height, new_df_Biomass]
     #
-    #
+
+
     Xs = keep_overlap_plant_for_input_data()
     Xs = calculate_average_for_every_genotype(Xs,"../data/image_DHline_data.csv")
+    create_input_data(Xs=Xs,save_directory="../data/input_data/spline_predict_input_average")
     #print(Xs)
 
-    create_input_data(Xs=Xs,save_directory="../data/input_data/spline_predict_input_average")
+
 
 if __name__ == '__main__':
     main()

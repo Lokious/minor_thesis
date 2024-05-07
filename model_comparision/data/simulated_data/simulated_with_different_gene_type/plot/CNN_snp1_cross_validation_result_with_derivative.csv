@@ -1,0 +1,4 @@
+,noise_type,optimizer,lr,num_epoch,batch_size,kernel,stride,train_accuracy,test_accuracy,avg_auc_score
+0,time_dependent_noise_0.2,Adam,0.05,3,10,3,12,0.33645833333333336,0.325,tensor(0.4869)
+0,time_dependent_noise_0.2,Adam,0.05,3,32,3,12,0.33645833333333336,0.325,tensor(0.5118)
+0,time_dependent_noise_0.2,Adam,0.05,3,64,3,12,0.33645833333333336,0.325,tensor(0.5086)

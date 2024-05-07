@@ -1,9 +1,14 @@
-elope-main/
-New folder/data/
-GWAS_DHs_landraces/
-New folder/script/.RData
-New folder/script/.Rhistory
-New folder/script/*.png
-New folder/result/*png
-model_comparision/data/
-model_comparision/*.png
+data/*.txt
+data/*.csv
+New folder/*
+elope-main/*
+GWAS_DHs_landraces/*
+model_comparision/reformat_biomass*
+model_comparision/biomass_average_based_on_genotype.csv
+model_comparision/eploe_*
+model_comparision/data/simulated_data/fixed_Max_range_of_parameters/plot/*Input_X
+model_comparision/data/simulated_data/simulated_from_elope_data_120_no_gene_effect/plot/*Input_X
+model_comparision/data/simulated_data/simulated_from_elope_data_120_no_gene_effect/plot/*.pt
+model_comparision/data/simulated_data/fixed_Max_range_of_parameters/plot/*.pt
+model_comparision/data/simulated_data/simulated_from_elope_data_120_no_gene_effect/plot/*Input_X
+File model_comparision/data/simulated_data/simulated_with_different_gene_type/plot/*Input_X

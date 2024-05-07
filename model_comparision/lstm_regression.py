@@ -11,7 +11,7 @@ import random
 import matplotlib.pyplot as plt
 import copy
 import torch.optim as optim
-import seaborn as sns
+
 
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix
@@ -255,11 +255,11 @@ def training(model, x, y, batch_size,epoch:int,out_fig="lstm_result_for_logistic
             x = torch.permute(x, (
                 1, 0, 2))
             predict_outputs = model(x.float())
-            print(predict_outputs)
-            print(y)
+            # print(predict_outputs)
+            # print(y)
             print("predict_y_shape {}".format(predict_outputs.shape))
             print("true y_shape {}".format(y.shape))
-            plot_r_predict_against_true(predict_outputs, y,"train")
+            #plot_r_predict_against_true(predict_outputs, y,"train")
 
     return model,predict_outputs
 
@@ -271,7 +271,7 @@ def test_model(x,y,model,out_fig="lstm_result_for_logistic_model_prediction/lstm
         outputs = model(x.float())
         print("predict_y_shape {}".format(outputs.shape))
         print("true y_shape {}".format(y.shape))
-        plot_r_predict_against_true(outputs, y,"test")
+        #plot_r_predict_against_true(outputs, y,"test")
     return outputs
 
 
@@ -286,6 +286,7 @@ def plot_r_predict_against_true(outputs,y,title="train"):
 
     outputs = outputs.flatten()
     predict_r = outputs.tolist()
+    print(predict_r)
     y = y.flatten()
     true_r = y.tolist()
     from sklearn.metrics import mean_squared_error

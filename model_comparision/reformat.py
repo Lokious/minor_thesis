@@ -10,6 +10,8 @@ import unittest
 import torch
 import torch.nn.functional as F
 from sklearn.model_selection import train_test_split
+from statsmodels.stats.anova import AnovaRM
+
 import lstm_regression
 from PIL import Image
 
@@ -90,6 +92,10 @@ def read_df_create_input_data(inputX,inputY,random_select=False):
     """
     X_df = pd.read_csv(inputX,index_col=0)
     Y_df = pd.read_csv(inputY,index_col=0)
+    try:
+        Y_df = pd.DataFrame(Y_df.loc["r",:])
+    except:
+        print("no column name")
     print(X_df,Y_df)
     # the column is related to number of samples, which should be the same length
     try:
@@ -165,9 +171,9 @@ def prepare_train_test_for_lstm_forecasting_multiple_dimension_label(x="simulate
     test_length = int(time_steps * label_size)
     print(test_length)
     train_length = time_steps - test_length
-    Y_df = X_df
-    # Y_df = X_df.iloc[train_length:,:]
-    # X_df = X_df.iloc[0:train_length-1,:]
+    #Y_df = X_df
+    Y_df = X_df.iloc[train_length:,:]
+    X_df = X_df.iloc[0:train_length-1,:]
     #print(Y_df)
     sequences_X = X_df.astype(np.float32).to_numpy().tolist()
     X_tensor = torch.stack(
@@ -310,7 +316,7 @@ def check_scaler(scalers, scaled_data:np.array, original_data:torch.tensor):
         print(torch.sum(torch.eq(unscaled_dataset, original_data)).item() / original_data.nelement())
         #assert torch.sum(torch.eq(unscaled_dataset,original_data)).item() / original_data.nelement() == 1.0
 
-def combine_data_for_model_classification(datas=[("simulated_X_data_irradiance.csv", "simulated_label_data_irradiance.csv")], test_size=0.2,train_size=0.8,random_select=False,snp_convert=False):
+def combine_data_for_model_classification(datas=[("simulated_X_data_irradiance.csv", "simulated_label_data_irradiance.csv")], test_size=0.2,train_size=0.8,random_select=False,snp_convert=False,seed = 123):
 
     try:
         X = []
@@ -365,7 +371,7 @@ def combine_data_for_model_classification(datas=[("simulated_X_data_irradiance.c
 
     x_train, x_test, y_train, y_test = train_test_split(X_tensor, Y_tensor,
                                                         test_size=test_size,
-                                                        random_state=123,train_size=train_size)
+                                                        random_state=seed,train_size=train_size)
     import model_classify
     # remove index and save seperately
     train_index = y_train[:, num_classes]
@@ -799,11 +805,96 @@ def read_and_cpmbine_simulated_data_with_gene_effect(directory:str="data/simulat
             sde_model_type_label.to_csv("{}reformat_data/{}_Input_label.csv".format(directory,noise_type))
             snp_label.to_csv("{}reformat_data/{}_Input_snp.csv".format(directory,noise_type))
 
+def anova_test_for_model_comparision():
+    #This function is to perform anova test and t test with ten times repeat for
+    # on the best model for SNP prediction and growth model prediction
+    #and plot the average result accuracy and copen's kappa score with sd
+    result_df = pd.read_csv("CNN_10_repeates_result_4models.csv",header=0,index_col=0)
+    print(result_df.columns)
+    groups = result_df.groupby("noise_type")
+    #groups = result_df.groupby("snp")
+    for group in groups.groups:
+        print(group)
+        group_df = groups.get_group(group)
+        print(group_df.mean().round(2))
+        # t test between result and random
+        from scipy.stats import ttest_1samp
+
+        null_hypothesis = 0.5  # dependes on number of classes
+        t_statistic, p_value = ttest_1samp(group_df["test_accuracy"], null_hypothesis,alternative='greater')
+        print(p_value,t_statistic)
+    result_df = result_df[["noise_type",'test_accuracy', 'cohenkappa_score']]
+    #result_df = result_df[["snp", 'test_accuracy', 'cohenkappa_score']]
+    # Convert the data to long format
+    df_melt = pd.melt(result_df, id_vars=['noise_type'], value_vars=['test_accuracy', 'cohenkappa_score'],
+                      var_name='Metric', value_name='Score')
+    # df_melt = pd.melt(result_df, id_vars=['snp'], value_vars=['test_accuracy', 'cohenkappa_score'],
+    #                   var_name='Metric', value_name='Score')
+    df_melt.drop_duplicates(inplace=True)
+    print(df_melt)
+    # # Perform two-way ANOVA
+    # rm = AnovaRM(df_melt, 'Score', 'noise_type', within=['Metric'], aggregate_func='mean')
+    # res = rm.fit()
+
+    # Print the ANOVA table
+    # print(res.anova_table)
+
+    # Plot the results
+    sns.pointplot(x='noise_type', y='Score', hue='Metric', data=df_melt, ci='sd',
+                  capsize=.2, join=False)
+    # sns.pointplot(x='snp', y='Score', hue='Metric', data=df_melt, ci='sd',
+    #               capsize=.2, join=False)
+    plt.ylim(0.0, 0.8)
+    #plt.xticks([0,1,2,3],["A","B","C","D"])
+    plt.title("CNN growth model classification")
+    plt.show()
+
 
 def main():
+    result_df_lstm = pd.read_csv("cnn_10_repeates_result_4models.csv", header=0,
+                            index_col=0)
+    result_df_lstm["network_type"] = "CNN"
+    result_df_cnn = pd.read_csv("lstm_30_repeates_result_4models_without_derivative.csv", header=0,
+                            index_col=0)
+    result_df_cnn["network_type"] = "LSTM"
+    data_df = pd.concat([result_df_lstm,result_df_cnn],ignore_index=True)
+
+    groups = data_df.groupby("noise_type")
+    # groups = result_df.groupby("snp")
+    for group in groups.groups:
+        print(group)
+        group_df = groups.get_group(group)
+        print(group_df.mean().round(2))
+    result_df = data_df[["noise_type", 'test_accuracy', "network_type"]]
+    order = result_df.groupby('noise_type')['test_accuracy'].mean().sort_values(
+        ascending=False).index
+    print(result_df)
+    sns.set(font_scale=1.3)
+    sns.pointplot(x='noise_type', y='test_accuracy', hue="network_type", data=result_df, ci='sd',
+                  capsize=.1, join=False,order=order)
+
+    plt.ylim(0.0, 1.0)
+
+    plt.title("Growth model classification")
+    plt.show()
+    '''
+    from sklearn.metrics import confusion_matrix,ConfusionMatrixDisplay
+    result_df = pd.read_csv("_test_snps_CNN4.csv")
+    y= result_df[["snp_4"]]
+    y_predict = result_df[["predict_labelAdam_lr0.01_epoch500_batch32kernel3stride12noisewithout_noise"]]
+    cm = confusion_matrix(y, y_predict)
+    cm_display = ConfusionMatrixDisplay(cm, display_labels=["0",
+                                                            "2",
+                                                            ]).plot()
+    plt.title(
+        "SNP_temperature_tolerance confusion matrix ")
+
+    plt.show()
+    '''
+    #anova_test_for_model_comparision()
     #read_biomass_and_filter()
     #read_and_cpmbine_simulated_data_with_gene_effect()
-    read_image_and_reformat_for_snps_prediction()
+    #read_image_and_reformat_for_snps_prediction()
     # save_combined_feature_tensors_as_dill_files( #save input for LSTM model (growth curve and derivative)
     #     folder="data/simulated_data/simulated_from_elope_data_120_no_gene_effect/")
     #read_image_and_reformat(folder="data/simulated_data/simulated_from_elope_data_120_no_gene_effect/")

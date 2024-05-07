@@ -1,0 +1,6 @@
+The simulated data X1,2 and 3 is create with the same biomass_max and get the random r fromthe same range (0.0671, 0.1496). The noise range is different 0.05*sqrt(x),sqrt(x) and 0.2*x (I tried 0.5*x or x level of noise for simulated data 3, while it is too high to looks like a plant growth curve).
+
+And I first test the r prediction and forecasting on those datset.
+
+I set the r vaule and biomass and y0 based on the ODE fit from while i generate the data with 4 different sde model, and will try to classify them.
+

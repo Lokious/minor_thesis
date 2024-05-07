@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import copy
 import torch.optim as optim
 import seaborn as sns
-from sklearn.metrics import confusion_matrix
+
 import matplotlib.pyplot as plt
 from math import sqrt
 from sklearn.model_selection import cross_validate
@@ -118,8 +118,7 @@ class CNNModelClassification(nn.Module):
 
         cnn_output1 = self.cnn1(x)
         cnn_output1 = self.Leakyrelu3(cnn_output1)
-        # cnn_output2 = self.cnn2(cnn_output1)
-        # cnn_output2 = self.Leakyrelu2(cnn_output2)
+
         #print("{}".format(cnn_output2.shape))
         pooling_output1 = self.pooling1(cnn_output1)
         #print("pooling output {}".format(pooling_output1.shape))
@@ -433,6 +432,9 @@ def test_model(x,y,model,image=False):
         predict_label = torch.round(outputs)
         # print("predictlabel")
         # print(predict_label)
+
+        cohenkappa_score = calculate_cohenkappa_score_for_tensor_prediction_out_put(
+            predict_label, y)
         predict_label = convert_one_hot_endoding_to_label(predict_label)
         y = convert_one_hot_endoding_to_label(y)
 
@@ -452,7 +454,7 @@ def test_model(x,y,model,image=False):
         accuracy = accuracy_score(y,predict_label)
         print("accuracy:{}".format(accuracy))
 
-    return accuracy,predict_label,avg_auc_score
+    return accuracy,predict_label,avg_auc_score,cohenkappa_score
 
 def convert_one_hot_endoding_to_label(y:torch.tensor):
     label_list =[]
@@ -473,15 +475,91 @@ def calculate_AUC_score_for_tensor_prediction_out_put(predicted_probs, true_labe
     print(len(true_labels.unique()))
     auroc = AUROC(task="multiclass", num_classes=len(true_labels.unique()))
 
-    avg_auc_score = auroc(predicted_probs, true_labels)
+    avg_auc_score = auroc(predicted_probs, true_labels).item()
     return avg_auc_score
 
 def calculate_cohenkappa_score_for_tensor_prediction_out_put(predicted_label,true_labels_onehot):
     """ Calculate CohenKappa_score"""
 
     cohenkappa = CohenKappa(task="multiclass", num_classes=true_labels_onehot.shape[1])
-    cohenkappa_score =cohenkappa(predicted_label, true_labels_onehot)
+    cohenkappa_score =cohenkappa(predicted_label, true_labels_onehot).item()
     return cohenkappa_score
+
+def calculate_shap_importance(model, X,y):
+    """
+    Compute PFI (Permutation Feature Importance) for LSTM model.
+
+    Args:
+        model (torch.nn.Module): trained LSTM model.
+        X (torch.Tensor): input tensor of shape (seq_len, batch_size, input_size).
+        y (torch.Tensor): target tensor of shape (batch_size, output_size).
+
+    Returns:
+        importance (torch.Tensor): importance tensor of shape (seq_len, input_size).
+    """
+    # Set model to evaluation mode
+    model.eval()
+
+    # Initialize importance tensor
+    seq_len, batch_size, input_size = X.shape
+    importance = torch.zeros((seq_len, input_size))
+
+    # Compute baseline score
+    with torch.no_grad():
+        y_pred = model(X)
+        baseline_score = torch.nn.functional.mse_loss(y_pred, y).item()
+
+    # Compute importance at each time step
+    for i in range(seq_len):
+        # Permute inputs at time step i
+        X_perm = X.clone()
+        X_perm[i, :, :] = torch.rand(batch_size, input_size)
+
+        # Compute score with permuted input
+        with torch.no_grad():
+            y_pred_perm = model(X_perm)
+            permuted_score = torch.nn.functional.mse_loss(y_pred_perm, y).item()
+
+        # Compute importance as the decrease in score
+        importance[i, :] = baseline_score - permuted_score
+
+    # Normalize importance by dividing by the sum of all importance values
+    importance = importance / torch.sum(importance)
+
+    return importance
+    return importance
+
+
+def plot_top_features(feature_importance, feature_names, num_features=10):
+    """
+    Plots the top features based on their importance values.
+
+    Parameters:
+    -----------
+    feature_importance: numpy array
+        Array of feature importance values.
+    feature_names: list
+        List of feature names.
+    num_features: int
+        Number of top features to plot.
+
+    Returns:
+    --------
+    None
+    """
+
+    # Get the top features based on their importance values
+    top_indices = feature_importance.argsort()[::-1][:num_features]
+    top_importance = feature_importance[top_indices]
+    top_names = [feature_names[i] for i in top_indices]
+
+    # Create a bar plot
+    plt.figure(figsize=(8, 6))
+    plt.bar(top_names, top_importance)
+    plt.xticks(rotation=45, ha='right', fontsize=12)
+    plt.ylabel('Feature importance', fontsize=12)
+    plt.title('Top {} features'.format(num_features), fontsize=14)
+    plt.show()
 
 def main():
     print(0)

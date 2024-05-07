@@ -92,7 +92,8 @@ class BiLSTMClassifier(nn.Module):
             elif 'bias' in name:
                 nn.init.constant_(param, 0.0)
 
-def training(model, x, y, batch_size):
+def training(model, x, y, batch_size,lr=0.001,epoch=100,
+                                    optimize='SGD'):
     """
 
     :param model:
@@ -104,10 +105,9 @@ def training(model, x, y, batch_size):
     :return:
     """
     num_sequences = x.shape[0]
-    seq_length = x.shape[1]
     # Define training parameters
-    learning_rate = 0.0001 #0.001 too large? when batch 100 it gives better result than batch 10 or 1
-    num_epochs = 100
+    learning_rate = lr
+    num_epochs = epoch
 
     # Convert input and target data to PyTorch datasets
     dataset = TensorDataset(x, y)
@@ -120,8 +120,10 @@ def training(model, x, y, batch_size):
 
     # Define loss function and optimizer
     criterion = nn.BCELoss()
-    optimizer = optim.SGD(model.parameters(), lr=learning_rate)
-
+    if optimize =='SGD':
+        optimizer = optim.SGD(model.parameters(), lr=learning_rate)
+    elif optimize == 'Adam':
+        optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     # Train the model
     for epoch in range(num_epochs):
         running_loss = 0.0
@@ -144,11 +146,11 @@ def training(model, x, y, batch_size):
             optimizer.step()
 
             # Print statistics
-            running_loss += loss.item() * inputs.size(0)
+            running_loss += loss.item() * inputs.size(1)
 
         if (epoch + 1) % 10 == 0:
             print('Epoch [{}/{}], Loss: {:.4f}'.format(epoch + 1, num_epochs,
-                                                       running_loss/(num_sequences)))
+                                                       running_loss / (num_sequences)))
 
     else:
         model.eval()  # Set the model to evaluation mode
@@ -161,35 +163,37 @@ def training(model, x, y, batch_size):
             predict_label = torch.round(outputs)
 
             cm = confusion_matrix(y,predict_label)
-            try:
-                print(cm)
-                TN = cm[0, 0]
-                FP = cm[0, 1]
-                FN = cm[1, 0]
-                TP = cm[1, 1]
-                print("training result")
-                print("True Negatives: {}".format(TN))
-                print("False Positives: {}".format(FP))
-                print("False Negatives: {}".format(FN))
-                print("True Positives: {}".format(TP))
+        #try:
+            print(cm)
+            TN = cm[0, 0]
+            FP = cm[0, 1]
+            FN = cm[1, 0]
+            TP = cm[1, 1]
+            print("training result")
+            print("True Negatives: {}".format(TN))
+            print("False Positives: {}".format(FP))
+            print("False Negatives: {}".format(FN))
+            print("True Positives: {}".format(TP))
+            train_accuracy = (TP+TN)/(TP+TN+FP+FN)
+            print("train accuracy: {}".format(train_accuracy))
+            # file = open("output_lstm.txt", "a")
+            # file.write("training loss at last epoch: {}\n".format(
+            #     (running_loss / num_sequences)))
+            # file.write("Training result:")
+            # file.write("True Negatives: {}\n".format(TN))
+            # file.write("False Positives: {}\n".format(FP))
+            # file.write("False Negatives: {}\n".format(FN))
+            # file.write("True Positives: {}\n".format(TP))
+            # file.write("test loss: {}\n".format(loss))
+        #except:
 
-                file = open("output_lstm.txt", "a")
-                file.write("training loss at last epoch: {}\n".format(
-                    (running_loss / num_sequences)))
-                file.write("Training result:")
-                file.write("True Negatives: {}\n".format(TN))
-                file.write("False Positives: {}\n".format(FP))
-                file.write("False Negatives: {}\n".format(FN))
-                file.write("True Positives: {}\n".format(TP))
-                file.write("test loss: {}\n".format(loss))
-            except:
-                file = open("output_lstm.txt", "a")
-                file.write("training loss at last epoch: {}\n".format(
-                    (running_loss / num_sequences)))
-                file.write("error")
-                file.write(" loss: {}\n".format(loss))
+            # file = open("output_lstm.txt", "a")
+            # file.write("training loss at last epoch: {}\n".format(
+            #     (running_loss / num_sequences)))
+            # file.write("error")
+            # file.write(" loss: {}\n".format(loss))
 
-
+    return model, train_accuracy
 
 def model_evaluation(model,x,y,snp,cross_validation=False):
     if not cross_validation:
@@ -223,7 +227,6 @@ def model_evaluation(model,x,y,snp,cross_validation=False):
                 print("False Positives: {}".format(FP))
                 print("False Negatives: {}".format(FN))
                 print("True Positives: {}".format(TP))
-
                 file = open("output_lstm.txt", "a")
                 file.write("True Negatives: {}\n".format(TN))
                 file.write("False Positives: {}\n".format(FP))
@@ -246,7 +249,6 @@ def model_evaluation(model,x,y,snp,cross_validation=False):
                 plt.clf()
                 matthews_corrcoef = BinaryMatthewsCorrCoef()
                 mcc = matthews_corrcoef(predict_label, y)
-                print("mcc {}".format(mcc))
                 return loss,TN,FP,TP,FN,mcc
             except:
                 file = open("output_lstm.txt", "a")
@@ -269,25 +271,21 @@ def model_evaluation(model,x,y,snp,cross_validation=False):
             print("test loss: {}\n".format(loss))
             matthews_corrcoef = BinaryMatthewsCorrCoef()
             mcc = matthews_corrcoef(predict_label, y)
-            print("mcc: {}".format(mcc))
-            try:
+            print(mcc)
+            cm = confusion_matrix(y, predict_label)
+            print(cm)
+            TN = cm[0, 0]
+            FP = cm[0, 1]
+            FN = cm[1, 0]
+            TP = cm[1, 1]
+            test_accuracy = (TP+TN)/(TP+TN+FP+FN)
+            print("train accuracy: {}".format(test_accuracy))
 
-                cm = confusion_matrix(y, predict_label)
-                print(cm)
-                TN = cm[0, 0]
-                FP = cm[0, 1]
-                FN = cm[1, 0]
-                TP = cm[1, 1]
-                return loss, TN, FP, TP, FN, mcc
-            except:
-                return loss, "NA", "NA", "NA", "NA","NA"
-
-def coss_validation_for_best_model(snp_list,input_x,hidden_size_range=[2,1,3],dropouts=[0.01,0.1],batch_sizes=[10,100]):
+            return test_accuracy, mcc
 
 
-    # Some authors suggest that when multiplying batch size by k,
-    # we should also multiply the learning rate with \sqrt{k} to keep the variance in the gradient expectation constant
-    test_result = {}
+def coss_validation_for_best_model(snp_list,input_x,hidden_size_range=[2,3,6,10],dropouts=[0.01,0.1,0.2],batch_sizes=[1,10,100]):
+
     print("########corss validation with  hideensize {} dropout {}".format(hidden_size_range,dropouts))
     print("# Total {} fold, for {} SNPs #".format(len(hidden_size_range)*len(dropouts),len(snp_list)))
 
@@ -295,54 +293,61 @@ def coss_validation_for_best_model(snp_list,input_x,hidden_size_range=[2,1,3],dr
         print("####### SNP {}: {} ######".format(i,snp))
         # x:(time step, number of sequences, inputsize(3))
         # y: (number of sequences, class_number)
-
-        try:
-            input_y = dill.load(open(
-                "../data/input_data/spline_predict_input_average/input_Y_{}".format(
-                    snp), "rb"))
-        except:
-            continue
-        # print(input_x.shape)
-        # print(input_y.shape)
-        test_result[snp]={'mcc':-1}
         from sklearn.model_selection import train_test_split
+        input_y = dill.load(open(
+            "../data/input_data/spline_predict_input_average/input_Y_{}".format(
+                snp), "rb"))
         x_train, x_test, y_train, y_test = train_test_split(input_x, input_y,
                                                             test_size=0.3,
                                                             random_state=1)
-        # try different combination of hidden size dropout and batch size
-        for hidden_size in hidden_size_range:
-            for dropout in dropouts:
-                for batch_size in batch_sizes:
-                    print("###hidden_size:{} dropout:{} batch_size:{}###".format(hidden_size,dropout,batch_size))
-                    # define model
-                    model = LSTM_classification(input_size=6, hidden_size=hidden_size, dropout=dropout)
-                    # model training
-                    print(model)
+        cross_validation_result = pd.DataFrame()
+        for optimizer in ["Adam"]:
+            for lr in [0.02,0.01,0.001]:
+                for epoch in [500]:
+                    for hidden_size in [3,5]:
+                        for batch_size in [10,32,64]:
+                            for dropout in [0.1,0.2,0.5]:
+                                # define model
+                                model = LSTM_classification(input_size=6, hidden_size=hidden_size, dropout=dropout)
+                                # model training
+                                print(model)
+                                training(model, x=x_train, y=y_train, batch_size=batch_size,epoch=epoch,optimize=optimizer,lr=lr)
+                                print("optimizer:{}".format(optimizer))
+                                print("lr: {}".format(lr))
+                                print("hidden_size:{}".format(hidden_size))
+                                print("batch_size:{}".format(batch_size))
+                                print("dropout: {}".format(dropout))
+                                model, train_accuracy = training(
+                                    model, x=x_train,
+                                    y=y_train, lr=lr, epoch=epoch, batch_size=batch_size,
+                                    optimize=optimizer)
+                                test_accuracy,mcc = model_evaluation(model,x=x_test,y=y_test,snp='=',cross_validation=True)
 
-                    training(model, x=x_train, y=y_train, batch_size=batch_size)
+                                new_row = pd.DataFrame(
+                                    data={
+                                          "optimizer": optimizer, "lr": lr,
+                                          "num_epoch": epoch,
+                                          "batch_size": batch_size,
+                                          "hidden_size": hidden_size,
+                                          "dropout":dropout,
+                                          "train_accuracy": train_accuracy,
+                                          "test_accuracy": test_accuracy,
+                                          "TEST_mcc":mcc},
+                                    index=[0])
+                                cross_validation_result = pd.concat(
+                                    [cross_validation_result, new_row])
+                                print(cross_validation_result)
+                                cross_validation_result.to_csv(
+                                    "{}_cross_validation_result_for_snp{}.csv".format('snp',snp))
 
-                    # model evaluation
-                    #print(y_test)
-                    loss,TN,FP,TP,FN,mcc = model_evaluation(model,x_test,y_test,snp)
-                    if mcc!= "NA" and (mcc > test_result[snp]["mcc"]):
-                        test_result[snp]["mcc"] = mcc
-                        test_result[snp]["hidden_size"] = hidden_size
-                        test_result[snp]["dropout"] = dropout
-                        test_result[snp]["batch_size"] = batch_size
-        else:
-            cross_validation_df = pd.DataFrame(test_result)
-            cross_validation_df.to_csv("crossvalidation.csv")
-            print(cross_validation_df)
-    else:
-        with open("../result/log_spline_predict_result_lstm_DH_LA_and_Height/coss_validation/result_dictionary","wb") as dillfile:
-            dill.dump(test_result,dillfile)
 
 def main():
 
     # read and pre-process input (build model for each snp)
-    # snp_df = pd.read_csv("../data/chosen_snps_map.csv", header=0, index_col=0) # all chosen snps
-    # snp_list = list(snp_df.index)
-    input_x = dill.load(open("../data/input_data/spline_predict_input_average/input_X","rb"))
+    #snp_df = pd.read_csv("../data/chosen_snps_map_remove_imbalanced.csv", header=0, index_col=0) # all chosen snps
+    #snp_list = list(snp_df.index)
+    snp_list = ['AX-91476701']
+    input_x = dill.load(open("../data/input_data/spline_predict_input_average_balanced_snps/input_X","rb"))
     print(input_x.shape)
     from autoencoder import normalization
     input_x,scaler = normalization(input_x)
@@ -355,54 +360,55 @@ def main():
 
     #fill na with 0 cause there are all at start
     input_x = torch.nan_to_num(input_x)
-    snp_df = pd.read_csv("../result/log_spline_predict_result_lstm_DH_LA_and_Height/result.csv", header=0, index_col=0) # subset which maybe related to traits
-    snp_df = snp_df.dropna()
-    print(snp_df)
-    snp_list = list(snp_df["snps"])
+    # snp_df = pd.read_csv("../result/log_spline_predict_result_lstm_DH_LA_and_Height/possiable_related_snps_log.csv", header=0, index_col=0) # subset which maybe related to traits
+    # snp_list = list(snp_df["snps"])
     coss_validation_for_best_model(input_x=input_x,snp_list=snp_list)
 
-    '''
-    test_result = {}
-    related_snps = []
-    for snp in snp_list:
+    #
+    # test_result = {}
+    # related_snps = []
+    # for snp in snp_list:
+    #
+    #     # x:(time step, number of sequences, inputsize(3))
+    #     # y: (number of sequences, class_number)
+    #     input_y = dill.load(
+    #         open("../data/input_data/spline_predict_input_average_balanced_snps/input_Y_{}".format(snp), "rb"))
+    #
+    #     # with open("output_lstm.txt", "a") as f:
+    #     #     f.write("#####{}#######\n".format(snp))
+    #     # try:
+    #     #     input_y = dill.load(open("../data/input_data/spline_predict_input_average_balanced_snps/input_Y_{}".format(snp),"rb"))
+    #     # except:
+    #     #     continue
+    #     # print(input_x.shape)
+    #     # print(input_y.shape)
+    #     from sklearn.model_selection import train_test_split
+    #     x_train, x_test, y_train, y_test = train_test_split(input_x, input_y,
+    #                                                         test_size=0.3,
+    #                                                         random_state=1)
+    #     # define model
+    #     model = LSTM_classification(input_size=6, hidden_size=2, dropout=0.01)
+    #     # model training
+    #     print(model)
+    #
+    #     training(model, x=x_train, y=y_train, batch_size=10)
+    #
+    #     # model evaluation
+    #     #print(y_test)
+    #     loss,TN,FP,TP,FN,mcc = model_evaluation(model,x_test,y_test,snp)
+    #     try:
+    #         if ((TN +FN) !=0) and ((TP + FP) != 0):
+    #             related_snps.append(snp)
+    #             save_df = pd.DataFrame(related_snps)
+    #             print(save_df)
+    #             save_df.to_csv("possiable_related_snps_log_average.csv")
+    #     except:
+    #         continue
+    #     test_result[snp] = [loss.item(),TN,FP,TP,FN,mcc]
+    #     # save to csv file
+    #     test_result_df=pd.DataFrame.from_dict(test_result, orient='index',
+    #                            columns=['test_loss','TN','FP','TP','FN',"mcc"])
+    #     test_result_df.to_csv("LSTM_test_result_log_average.csv")
 
-        # x:(time step, number of sequences, inputsize(3))
-        # y: (number of sequences, class_number)
-        with open("output_lstm.txt", "a") as f:
-            f.write("#####{}#######\n".format(snp))
-        try:
-            input_y = dill.load(open("../data/input_data/spline_predict_input/input_Y_{}".format(snp),"rb"))
-        except:
-            continue
-        # print(input_x.shape)
-        # print(input_y.shape)
-        from sklearn.model_selection import train_test_split
-        x_train, x_test, y_train, y_test = train_test_split(input_x, input_y,
-                                                            test_size=0.3,
-                                                            random_state=1)
-        # define model
-        model = LSTM_classification(input_size=6, hidden_size=2, dropout=0.01)
-        # model training
-        print(model)
-
-        training(model, x=x_train, y=y_train, batch_size=10)
-
-        # model evaluation
-        #print(y_test)
-        loss,TN,FP,TP,FN,mcc = model_evaluation(model,x_test,y_test,snp)
-        try:
-            if ((TN +FN) !=0) and ((TP + FP) != 0):
-                related_snps.append(snp)
-                save_df = pd.DataFrame(related_snps)
-                print(save_df)
-                save_df.to_csv("possiable_related_snps_log.csv")
-        except:
-            continue
-        test_result[snp] = [loss.item(),TN,FP,TP,FN,mcc]
-        # save to csv file
-        test_result_df=pd.DataFrame.from_dict(test_result, orient='index',
-                               columns=['test_loss','TN','FP','TP','FN',"mcc"])
-        test_result_df.to_csv("LSTM_test_result_log.csv")
-    '''
 if __name__ == '__main__':
     main()

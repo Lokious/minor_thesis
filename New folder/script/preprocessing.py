@@ -6,7 +6,7 @@ save the dataframe using dill; csv file tooks more time and memory while reading
 import copy
 import random
 import dill
-import pyreadr
+#import pyreadr
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
@@ -510,7 +510,9 @@ def choose_snps():
 #     def test1_na_count(self):
 #         missing_value_count()
 
+
 def main():
+
     choose_snps()
     #unittest.main()
     '''

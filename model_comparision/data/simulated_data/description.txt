@@ -1,0 +1,1 @@
+for the simulated data, the derivative and biomass growth curve are saved separately in csv file, the dill file is combined features with growth curve and derivative against biomass. 

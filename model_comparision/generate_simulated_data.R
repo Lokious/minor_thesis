@@ -21,9 +21,11 @@ library('Cairo')
 #temperature data is download from https://www.visualcrossing.com/weather/weather-data-services# netherland from Feb. to May and add 15
 #because when tempreture is too low the tempreture curve grows too slow
 weather_condition <- read.csv("data/simulated_data/netherland 2022-02-01 to 2022-05-31.csv")
-temperature_list <- weather_condition$tempmin+15
+temperature_list <- weather_condition$tempmin+20
 fit_temperature<- smooth.spline(temperature_list,nknots=10)
 temperature_list <- fit_temperature$y
+
+set.seed(123)
 # read weather condition from the ELOPE platform weather condition
 #weather_condition <- read.csv("../elope-main/ELOPE_raw_data/data_platform/platform_envCovariates/WeatherConditions_Mean.csv")
 # temperature_condition <- weather_condition[c('Day','tempmean')]
@@ -38,20 +40,24 @@ temperature_list <- fit_temperature$y
 # so we generate 3*3*2*2 =36 different genotypes based on that(2 for snps c and d, because there are no difference between Cc and CC)
 
 # three different r range
-r_range_1 <- c(0,0.25) #aa
-r_range_2 <- c(0.25,0.5) #Aa
-r_range_3 <- c(0.5,0.75) #AA
+r_range_1 <- 0.25 #aa
+r_range_2 <- 0.5 #Aa
+r_range_3 <- 0.75 #AA
 # three different Mmax
-Mmax_range_1<-c(5800,5900) #bb
-Mmax_range_2<-c(5900,6000) #Bb
-Mmax_range_3<-c(6000,6100) #BB
+Mmax_range_1<-5900#bb
+Mmax_range_2<-6000 #Bb
+Mmax_range_3<-6100 #BB
 snp_1 = 0
-snp2 = 0
-snp3 = 0
-snp4 = 0
+for (r in list(r_range_1,r_range_2,r_range_3)){print(r)}
+
 for (r_range in list(r_range_1,r_range_2,r_range_3)){
+  snp_2 = 0
+
   for (Mmax_range in list(Mmax_range_1,Mmax_range_2,Mmax_range_3)){
+    snp_3 = 0
+    
     for (irradiance_tolarence in list(1,0.5)){
+      snp_4 = 0
       # 1 means this genotype is sensitive to irradiance, while for 0.5 we use 0.5 multiply by irradiance effect
       for (temperature_tolerance in list(1,0.5)){
         #same as irradiance effect
@@ -63,21 +69,13 @@ for (r_range in list(r_range_1,r_range_2,r_range_3)){
           # time steps is 120 days
           end.time = 120
           # end.biomass <- biomass[end.time] #5.8696
-          time.vec <- 1:(end.time) # define a time vector from 0 to 117
+          time.vec <- 1:(end.time) # define a time vector from 0 to 120
           
           ### Stochastic logistic equation model ###
-          set.seed(123)
+          
           df <- data.frame(matrix(nrow = end.time, ncol = 0))
-          r_list = list()
-          
-          label_list = list()
-          # read parameters range
-          parameters_df <- read.csv("logistics_fit_parameters.csv")
-          # drop negetive r
-          parameters_df<-subset(parameters_df, r>0)
-          r_range <- c(min(parameters_df$r),max(parameters_df$r))
-          y0_range <- c(min(parameters_df$y0),max(parameters_df$y0))
-          
+
+
           ### Stochastic logistic equation
           
           df <- data.frame(matrix(nrow = end.time, ncol = 0))
@@ -86,15 +84,19 @@ for (r_range in list(r_range_1,r_range_2,r_range_3)){
           r_list = list()
           Mmax_list = list()
           label_list = list()
+          snp_1_list = list()
+          snp_2_list = list()
+          snp_3_list = list()
+          snp_4_list = list()
           #plot(x=0,y=0,xlim = c(0, 7),ylim = c(0.0,0.5),xlab="biomass",ylab="derivative")
-          for (i in c(1:300)){
+          for (i in c(1:50)){
             print(i)
             simulated_logistics_data <- c(NA)
-            while(sum(is.na(simulated_logistics_data)) !=0|| (tail(simulated_logistics_data, n=1)<(Mmax-1))){
+            while(sum(is.na(simulated_logistics_data)) !=0|| (tail(simulated_logistics_data, n=1)<(Mmax-2))){
               #only keep the simulated data which doesn't have NA Inf or -Inf
               
-              r <-runif(1,r_range[1],r_range[2])
-              Mmax<-runif(1,5900,6100)/1000
+              r <-rnorm(1,r_range,0.25)
+              Mmax<-rnorm(1,Mmax_range,100)/1000
               # Mmax <-6
               y0 <- 4.6/1000
               d <- expression(r * x * (1 - x/Mmax)) 
@@ -126,7 +128,7 @@ for (r_range in list(r_range_1,r_range_2,r_range_3)){
             # save simulated data and parameters
             df[ , ncol(df) + 1] = simulated_logistics_data
             #save growth curve plot
-            Cairo(file=paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/plot/growth_curve/simulated_X_data_logistic_",noise_name,"_",i,"_.tiff",sep=""),
+            Cairo(file=paste0("data/simulated_data/simulated_with_different_gene_type/plot/growth_curve/simulated_X_data_logistic_",noise_name,"_",snp_1,"_",snp_2,"_",snp_3,"_",snp_4,"_",i,"_.tiff",sep=""),
                   type="tiff",
                   units="px", 
                   width=256, 
@@ -139,10 +141,13 @@ for (r_range in list(r_range_1,r_range_2,r_range_3)){
             r_list <- append(r_list,r)
             Mmax_list <- append(Mmax_list,Mmax)
             label_list <- append(label_list,"0")
-            
+            # snp_1_list <- append(snp_1_list,snp_1)
+            # snp_2_list <- append(snp_2_list,snp_2)
+            # snp_3_list <- append(snp_3_list,snp_3)
+            # snp_4_list <- append(snp_4_list,snp_1)
             fit <- smooth.spline(x=time.vec,y=simulated_logistics_data)
             derivative <-D1tr(y=simulated_logistics_data, x = time.vec)
-            Cairo(file=paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/plot/smooth_derivative/simulated_X_data_logistic_",noise_name,"_",i,"_.tiff",sep=""),
+            Cairo(file=paste0("data/simulated_data/simulated_with_different_gene_type/plot/smooth_derivative/simulated_X_data_logistic_",noise_name,"_",snp_1,"_",snp_2,"_",snp_3,"_",snp_4,"_",i,"_.tiff",sep=""),
                   type="tiff",
                   units="px", 
                   width=256, 
@@ -169,21 +174,21 @@ for (r_range in list(r_range_1,r_range_2,r_range_3)){
           
           ####save dataframe to files###
           #write biomass at 120 time steps to csv
-          write.csv(df,paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/simulated_X_data_logistic_",noise_name,".csv",sep=""))
+          write.csv(df,paste0("data/simulated_data/simulated_with_different_gene_type/simulated_X_data_logistic_",noise_name,"_",snp_1,"_",snp_2,"_",snp_3,"_",snp_4,".csv",sep=""))
           # rename label dataframe
           df_Y = data.frame(label_list)
-          colnames(df_Y) <- c(1:300)
+          colnames(df_Y) <- c(1:50)
           # write label dataframe
-          write.csv(df_Y,paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/simulated_label_data_logistic_",noise_name,".csv",sep=""))
+          write.csv(df_Y,paste0("data/simulated_data/simulated_with_different_gene_type/simulated_label_data_logistic_",noise_name,"_",snp_1,"_",snp_2,"_",snp_3,"_",snp_4,".csv",sep=""))
           # write derivative dataframe to csv
-          write.csv(derivative_df,paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/simulated_derivative_data_logistic_",noise_name,".csv",sep=""))
+          write.csv(derivative_df,paste0("data/simulated_data/simulated_with_different_gene_type/simulated_derivative_data_logistic_",noise_name,"_",snp_1,"_",snp_2,"_",snp_3,"_",snp_4,".csv",sep=""))
           # write smoothed derivative dataframe to csv
-          write.csv(smooth_derivative_df,paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/simulated_smoothed_derivative_data_logistic_",noise_name,".csv",sep=""))
+          write.csv(smooth_derivative_df,paste0("data/simulated_data/simulated_with_different_gene_type/simulated_smoothed_derivative_data_logistic_",noise_name,"_",snp_1,"_",snp_2,"_",snp_3,"_",snp_4,".csv",sep=""))
           df_r <- data.frame(r_list)
           df_new = rbind(df_r,Mmax_list)
           rownames(df_new)  <-c("r","Mmax")
-          colnames(df_new) <- c(1:300)
-          write.csv(df_new,paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/parameters_list_simulated_data_logistic_",noise_name,".csv",sep=""))
+          colnames(df_new) <- c(1:50)
+          write.csv(df_new,paste0("data/simulated_data/simulated_with_different_gene_type/parameters_list_simulated_data_logistic_",noise_name,"_",snp_1,"_",snp_2,"_",snp_3,"_",snp_4,".csv",sep=""))
           
           ######generate data from Irradiance model######
           df <- data.frame(matrix(nrow = end.time, ncol = 0))
@@ -195,20 +200,20 @@ for (r_range in list(r_range_1,r_range_2,r_range_3)){
           phi_list = list()
           Mmax_list = list()
           label_list = list()
-          for (i in c(1:300)){
+          for (i in c(1:50)){
             print(i)
             simulated_irradiance_logistics_data <- c(NA)
-            Mmax<-runif(1,5900,6100)/1000
-            # Mmax<-6000/1000
-            while((sum(is.na(simulated_irradiance_logistics_data)) !=0) || (tail(simulated_irradiance_logistics_data, n=1)<(Mmax-1))){
+            Mmax<-rnorm(1,Mmax_range,100)/1000
+ 
+            while((sum(is.na(simulated_irradiance_logistics_data)) !=0) || (tail(simulated_irradiance_logistics_data, n=1)<(Mmax-2))){
               #only keep the simulated data which doesn't have NA Inf or -Inf
               #runif() generates random deviates of the uniform distribution
-              r <-runif(1,r_range[1],r_range[2])
+              r <-rnorm(1,r_range,0.25)
               y0 <-4.6/1000
               a <- runif(1, -0.5, 0.5)
               fi <- runif(1,1/365,182/365)
               
-              d_irradiance <- expression((r+a*sin((2*pi/365)*t+fi)) * x * (1 - x/Mmax))
+              d_irradiance <- expression((r+irradiance_tolarence*(a*sin((2*pi/365)*t+fi))) * x * (1 - x/Mmax))
               if (noise_name=="without_noise"){
                 s_irradiance <- expression(0*x) #without_noise
               }
@@ -241,7 +246,7 @@ for (r_range in list(r_range_1,r_range_2,r_range_3)){
             Mmax_list <- append(Mmax_list,Mmax)
             label_list <- append(label_list,'1')
             
-            Cairo(file=paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/plot/growth_curve/simulated_X_data_irradiance_",noise_name,"_",i,"_.tiff",sep=""),
+            Cairo(file=paste0("data/simulated_data/simulated_with_different_gene_type/plot/growth_curve/simulated_X_data_irradiance_",noise_name,"_",snp_1,"_",snp_2,"_",snp_3,"_",snp_4,"_",i,"_.tiff",sep=""),
                   type="tiff",
                   units="px", 
                   width=256, 
@@ -258,7 +263,7 @@ for (r_range in list(r_range_1,r_range_2,r_range_3)){
             smooth_derivative_df[ , ncol(derivative_df) + 1] = predicted_derivative$y
             derivative_df[ , ncol(derivative_df) + 1] = derivative
             plot(y=c(derivative),x=c(simulated_irradiance_logistics_data),type='l', col = "red",xlim = c(0, 7),ylim = c(0.0,2.0))
-            Cairo(file=paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/plot/smooth_derivative/simulated_X_data_irradiance_",noise_name,"_",i,"_.tiff",sep=""),
+            Cairo(file=paste0("data/simulated_data/simulated_with_different_gene_type/plot/smooth_derivative/simulated_X_data_irradiance_",noise_name,"_",snp_1,"_",snp_2,"_",snp_3,"_",snp_4,"_",i,"_.tiff",sep=""),
                   type="tiff",
                   units="px", 
                   width=256, 
@@ -278,21 +283,21 @@ for (r_range in list(r_range_1,r_range_2,r_range_3)){
           }
           
           #plot(simulated_irradiance_logistics_data)
-          write.csv(df,paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/simulated_X_data_irradiance_",noise_name,".csv",sep=""))
+          write.csv(df,paste0("data/simulated_data/simulated_with_different_gene_type/simulated_X_data_irradiance_",noise_name,"_",snp_1,"_",snp_2,"_",snp_3,"_",snp_4,".csv",sep=""))
           df_Y = data.frame(label_list)
-          colnames(df_Y) <- c(1:300)
-          write.csv(df_Y,paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/simulated_label_data_irradiance_",noise_name,".csv",sep=""))
+          colnames(df_Y) <- c(1:50)
+          write.csv(df_Y,paste0("data/simulated_data/simulated_with_different_gene_type/simulated_label_data_irradiance_",noise_name,"_",snp_1,"_",snp_2,"_",snp_3,"_",snp_4,".csv",sep=""))
           # write derivative dataframe to csv
-          write.csv(derivative_df,paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/simulated_derivative_data_irradiance_",noise_name,".csv",sep=""))
+          write.csv(derivative_df,paste0("data/simulated_data/simulated_with_different_gene_type/simulated_derivative_data_irradiance_",noise_name,"_",snp_1,"_",snp_2,"_",snp_3,"_",snp_4,".csv",sep=""))
           # write smoothed derivative dataframe to csv
-          write.csv(smooth_derivative_df,paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/simulated_smoothed_derivative_data_irradiance_",noise_name,".csv",sep=""))
+          write.csv(smooth_derivative_df,paste0("data/simulated_data/simulated_with_different_gene_type/simulated_smoothed_derivative_data_irradiance_",noise_name,"_",snp_1,"_",snp_2,"_",snp_3,"_",snp_4,".csv",sep=""))
           df_r <- data.frame(r_list)
           df_new = rbind(df_r,Mmax_list)
           df_new = rbind(df_new,phi_list)
           df_new = rbind(df_new,a_list)
           rownames(df_new)  <-c("r","Mmax","Phi","a")
-          colnames(df_new) <- c(1:300)
-          write.csv(df_new,paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/parameters_list_simulated_data_irradiance_",noise_name,".csv",sep=""))
+          colnames(df_new) <- c(1:50)
+          write.csv(df_new,paste0("data/simulated_data/simulated_with_different_gene_type/parameters_list_simulated_data_irradiance_",noise_name,"_",snp_1,"_",snp_2,"_",snp_3,"_",snp_4,".csv",sep=""))
           
           ### Allee model ###
           set.seed(123)
@@ -310,14 +315,14 @@ for (r_range in list(r_range_1,r_range_2,r_range_3)){
           Mmax_list = list()
           label_list = list()
           
-          for (i in c(1:300)){
+          for (i in c(1:50)){
             print(i)
             simulated_allee_data <- NA
-            while(sum(is.na(simulated_allee_data)) !=0 || (tail(simulated_allee_data, n=1)<(Mmax-1))){
+            while(sum(is.na(simulated_allee_data)) !=0 || (tail(simulated_allee_data, n=1)<(Mmax-2))){
               #only keep the simulated data which doesn't have NA Inf or -Inf
               
-              r <-runif(1,r_range[1],r_range[2])
-              Mmax<-runif(1,5900,6100)/1000
+              r <-rnorm(1,r_range,0.25)
+              Mmax<-rnorm(1,Mmax_range,100)/1000
               y0 <- 4.6/1000
               Ma <- runif(1,0,y0) #yo>Ma
               d <- expression(r*x*(1 - x/Mmax)*(x/(x + Ma))) 
@@ -353,7 +358,7 @@ for (r_range in list(r_range_1,r_range_2,r_range_3)){
             Ma_list <-append(Ma_list,Ma)
             Mmax_list <-append(Mmax_list,Mmax)
             label_list <- append(label_list,"2")
-            Cairo(file=paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/plot/growth_curve/simulated_X_data_Allee_",noise_name,"_",i,"_.tiff",sep=""),
+            Cairo(file=paste0("data/simulated_data/simulated_with_different_gene_type/plot/growth_curve/simulated_X_data_Allee_",noise_name,"_",snp_1,"_",snp_2,"_",snp_3,"_",snp_4,"_",i,"_.tiff",sep=""),
                   type="tiff",
                   units="px", 
                   width=256, 
@@ -370,7 +375,7 @@ for (r_range in list(r_range_1,r_range_2,r_range_3)){
             smooth_derivative_df[ , ncol(derivative_df) + 1] = predicted_derivative$y
             derivative_df[ , ncol(derivative_df) + 1] = derivative
             
-            Cairo(file=paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/plot/smooth_derivative/simulated_X_data_Allee_",noise_name,"_",i,"_.tiff",sep=""),
+            Cairo(file=paste0("data/simulated_data/simulated_with_different_gene_type/plot/smooth_derivative/simulated_X_data_Allee_",noise_name,"_",snp_1,"_",snp_2,"_",snp_3,"_",snp_4,"_",i,"_.tiff",sep=""),
                   type="tiff",
                   units="px", 
                   width=256, 
@@ -392,21 +397,21 @@ for (r_range in list(r_range_1,r_range_2,r_range_3)){
           
           #plot(simulated_allee_data)
           ### without_noise; time_independent_noise_0.25; time_dependent_noise_0.2; biomass_dependent_noise_0.2
-          write.csv(df,paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/simulated_X_data_Allee_",noise_name,".csv",sep=""))
+          write.csv(df,paste0("data/simulated_data/simulated_with_different_gene_type/simulated_X_data_Allee_",noise_name,"_",snp_1,"_",snp_2,"_",snp_3,"_",snp_4,".csv",sep=""))
           df_Y = data.frame(label_list)
-          colnames(df_Y) <- c(1:300)
-          colnames(derivative_df) <- c(1:300)
-          write.csv(df_Y,paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/simulated_label_data_Allee_",noise_name,".csv",sep=""))
+          colnames(df_Y) <- c(1:50)
+          colnames(derivative_df) <- c(1:50)
+          write.csv(df_Y,paste0("data/simulated_data/simulated_with_different_gene_type/simulated_label_data_Allee_",noise_name,"_",snp_1,"_",snp_2,"_",snp_3,"_",snp_4,".csv",sep=""))
           # write derivative dataframe to csv
-          write.csv(derivative_df,paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/simulated_derivative_data_Allee_",noise_name,".csv",sep=""))
+          write.csv(derivative_df,paste0("data/simulated_data/simulated_with_different_gene_type/simulated_derivative_data_Allee_",noise_name,"_",snp_1,"_",snp_2,"_",snp_3,"_",snp_4,".csv",sep=""))
           # write smoothed derivative dataframe to csv
-          write.csv(smooth_derivative_df,paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/simulated_smoothed_derivative_data_Allee_",noise_name,".csv",sep=""))
+          write.csv(smooth_derivative_df,paste0("data/simulated_data/simulated_with_different_gene_type/simulated_smoothed_derivative_data_Allee_",noise_name,"_",snp_1,"_",snp_2,"_",snp_3,"_",snp_4,".csv",sep=""))
           df_r <- data.frame(r_list)
           df_new = rbind(df_r,Mmax_list)
           df_new = rbind(df_new,Ma_list)
           rownames(df_new)  <-c("r","Mmax","Ma")
-          colnames(df_new) <- c(1:300)
-          write.csv(df_new,paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/parameters_list_simulated_data_Allee_",noise_name,".csv",sep=""))
+          colnames(df_new) <- c(1:50)
+          write.csv(df_new,paste0("data/simulated_data/simulated_with_different_gene_type/parameters_list_simulated_data_Allee_",noise_name,"_",snp_1,"_",snp_2,"_",snp_3,"_",snp_4,".csv",sep=""))
           
           # ### temperature model ###
           set.seed(123)
@@ -422,14 +427,14 @@ for (r_range in list(r_range_1,r_range_2,r_range_3)){
           Mmax_list = list()
           label_list = list()
           
-          for (i in c(1:300)){
+          for (i in c(1:50)){
             print(i)
             simulated_temperature_data <- NA
-            while(sum(is.na(simulated_temperature_data)) !=0 || (tail(simulated_temperature_data, n=1)<(Mmax-1))){ 
+            while(sum(is.na(simulated_temperature_data)) !=0 || (tail(simulated_temperature_data, n=1)<(Mmax-2))){ 
               #only keep the simulated data which doesn't have NA Inf or -Inf
               
-              r <-runif(1,r_range[1],r_range[2])
-              Mmax<-runif(1,5900,6100)/1000
+              r <-rnorm(1,r_range,0.25)
+              Mmax<-rnorm(1,Mmax_range,100)/1000
               y0 <- 4.6/1000
               TAL= 20000
               TL = 292
@@ -437,9 +442,9 @@ for (r_range in list(r_range_1,r_range_2,r_range_3)){
               TH = 303
               temp_t = temperature_list
               #if with temperature tolerance snp(dd), the parameter will be 0.5 so the is less affected by temperature
-              r.adapt <- (1 + temperature_tolerance*(exp(TAL/(temp_t + 273) - TAL/TL) + exp(TAH/TH - TAH/(temp_t + 273) )))^{-1}
+              r.adapt <- (1 + temperature_tolerance*((exp(TAL/(temp_t + 273) - TAL/TL) + exp(TAH/TH - TAH/(temp_t + 273)))))^{-1}
             
-              d <- expression(r.adapt*r * x * (1 - x/Mmax)) 
+              d <- expression(r.adapt[t]*r * x * (1 - x/Mmax)) 
               
               if (noise_name=="without_noise"){
                 s_temperature <- expression(0*x) #without_noise
@@ -472,7 +477,7 @@ for (r_range in list(r_range_1,r_range_2,r_range_3)){
             r_list <- append(r_list,r)
             Mmax_list <-append(Mmax_list,Mmax)
             label_list <- append(label_list,"3")
-            Cairo(file=paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/plot/growth_curve/simulated_X_data_Temperature_",noise_name,"_",i,"_.tiff",sep=""),
+            Cairo(file=paste0("data/simulated_data/simulated_with_different_gene_type/plot/growth_curve/simulated_X_data_Temperature_",noise_name,"_",snp_1,"_",snp_2,"_",snp_3,"_",snp_4,"_",i,"_.tiff",sep=""),
                   type="tiff",
                   units="px",
                   width=256,
@@ -489,7 +494,7 @@ for (r_range in list(r_range_1,r_range_2,r_range_3)){
             smooth_derivative_df[ , ncol(derivative_df) + 1] = predicted_derivative$y
             derivative_df[ , ncol(derivative_df) + 1] = derivative
             plot(y=c(derivative),x=c(simulated_temperature_data),type='l', col = "grey",xlim = c(0, 7),ylim = c(0.0,2.0))
-            Cairo(file=paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/plot/smooth_derivative/simulated_X_data_Temperature_",noise_name,"_",i,"_.tiff",sep=""),
+            Cairo(file=paste0("data/simulated_data/simulated_with_different_gene_type/plot/smooth_derivative/simulated_X_data_Temperature_",noise_name,"_",snp_1,"_",snp_2,"_",snp_3,"_",snp_4,"_",i,"_.tiff",sep=""),
                   type="tiff",
                   units="px",
                   width=256,
@@ -510,20 +515,20 @@ for (r_range in list(r_range_1,r_range_2,r_range_3)){
           
           plot(simulated_temperature_data)
           
-          write.csv(df,paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/simulated_X_data_Temperature_",noise_name,".csv",sep=""))
+          write.csv(df,paste0("data/simulated_data/simulated_with_different_gene_type/simulated_X_data_Temperature_",noise_name,"_",snp_1,"_",snp_2,"_",snp_3,"_",snp_4,".csv",sep=""))
           df_Y = data.frame(label_list)
-          colnames(df_Y) <- c(1:300)
-          colnames(derivative_df) <- c(1:300)
-          write.csv(df_Y,paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/simulated_label_data_Temperature_",noise_name,".csv",sep=""))
+          colnames(df_Y) <- c(1:50)
+          colnames(derivative_df) <- c(1:50)
+          write.csv(df_Y,paste0("data/simulated_data/simulated_with_different_gene_type/simulated_label_data_Temperature_",noise_name,"_",snp_1,"_",snp_2,"_",snp_3,"_",snp_4,".csv",sep=""))
           # write derivative dataframe to csv
-          write.csv(derivative_df,paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/simulated_derivative_data_Temperature_",noise_name,".csv",sep=""))
+          write.csv(derivative_df,paste0("data/simulated_data/simulated_with_different_gene_type/simulated_derivative_data_Temperature_",noise_name,"_",snp_1,"_",snp_2,"_",snp_3,"_",snp_4,".csv",sep=""))
           # write smoothed derivative dataframe to csv
-          write.csv(smooth_derivative_df,paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/simulated_smoothed_derivative_data_Temperature_",noise_name,".csv",sep=""))
+          write.csv(smooth_derivative_df,paste0("data/simulated_data/simulated_with_different_gene_type/simulated_smoothed_derivative_data_Temperature_",noise_name,"_",snp_1,"_",snp_2,"_",snp_3,"_",snp_4,".csv",sep=""))
           df_r <- data.frame(r_list)
           df_new = rbind(df_r,Mmax_list)
           rownames(df_new)  <-c("r","Mmax")
-          colnames(df_new) <- c(1:300)
-          write.csv(df_new,paste0("data/simulated_data/simulated_from_elope_data_120_no_gene_effect/parameters_list_simulated_data_Temperature_",noise_name,".csv",sep=""))
+          colnames(df_new) <- c(1:50)
+          write.csv(df_new,paste0("data/simulated_data/simulated_with_different_gene_type/parameters_list_simulated_data_Temperature_",noise_name,"_",snp_1,"_",snp_2,"_",snp_3,"_",snp_4,".csv",sep=""))
         }
         snp_4 = snp_4+2
       }

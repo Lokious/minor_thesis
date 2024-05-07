@@ -1,0 +1,2 @@
+The datasets are generate with a fixed parameters range(no gene effect, we use the same range of parameters: r max_biomass ...) also plot of the growth curve and derivate against biomass is saved under plot/ .
+three model's data are generate separately(same parameters range but different parameters).
